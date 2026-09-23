@@ -79,7 +79,8 @@ fun GameHud(controller: GameController, onExit: () -> Unit) {
             Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.55f)).padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (hud.waitingForWaveStart) {
+            val hasNextWave = hud.totalWaves == null || hud.waveIndex < hud.totalWaves!!
+            if (hud.waitingForWaveStart && hasNextWave) {
                 Button(onClick = controller::startNextWave, modifier = Modifier.padding(bottom = 8.dp)) {
                     Text(
                         when {
