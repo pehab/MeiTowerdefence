@@ -9,6 +9,8 @@ import de.haberland.meitowerdefense.model.TowerBalance
 import de.haberland.meitowerdefense.model.TowerType
 import de.haberland.meitowerdefense.model.Vec2
 import de.haberland.meitowerdefense.model.WaveEntry
+import de.haberland.meitowerdefense.model.WaveGroup
+import de.haberland.meitowerdefense.content.LevelCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -419,6 +421,62 @@ class GameSimulatorTest {
         val afterConcluded = GameSimulator.step(session, dt = 1f)
         assertEquals(session, afterConcluded)
     }
+
+    @Test
+    fun mixedWaveCanSpawnDifferentEnemyTypesOnOverlappingTimelines() {
+        val level = straightLevel(
+            waves = listOf(
+                WaveEntry(
+                    listOf(
+                        WaveGroup(EnemyType.BASIC, count = 2, spawnIntervalSeconds = 1f),
+                        WaveGroup(
+                            EnemyType.FLYING,
+                            count = 1,
+                            spawnIntervalSeconds = 1f,
+                            startDelaySeconds = 0.5f
+                        )
+                    )
+                )
+            ),
+            startingLives = 100
+        )
+        var session = freshSessionWithWaveStarted(level)
+
+        session = GameSimulator.step(session, dt = 0.1f)
+        assertEquals(listOf(EnemyType.BASIC), session.enemies.map { it.type })
+
+        session = GameSimulator.step(session, dt = 0.5f)
+        assertTrue(session.enemies.any { it.type == EnemyType.FLYING })
+    }
+
+    @Test
+    fun endlessModeKeepsGeneratingWavesAndNeverReportsWin() {
+        val level = LevelCatalog.endless.copy(startingLives = 10_000)
+        var session = freshSessionWithWaveStarted(level)
+
+        repeat(600) {
+            if (session.outcome == GameOutcome.IN_PROGRESS) {
+                session = GameSimulator.step(session, dt = 0.05f)
+            }
+        }
+
+        assertTrue("endless mode should have advanced beyond its first generated wave", session.waveIndex > 0)
+        assertTrue("endless mode must not produce a campaign win", session.outcome != GameOutcome.WON)
+    }
+
+    @Test
+    fun runStatsTrackPlayerEconomyActions() {
+        var session = freshSession(level = straightLevel(startingGold = 10_000))
+        session = GameSimulator.buildTower(session, TowerType.ARCHER, GridPos(2, 8))!!
+        val towerId = session.towers.first().id
+        session = GameSimulator.upgradeTower(session, towerId)!!
+        session = GameSimulator.sellTower(session, towerId)!!
+
+        assertEquals(1, session.stats.towersBuilt)
+        assertEquals(1, session.stats.towersUpgraded)
+        assertEquals(1, session.stats.towersSold)
+    }
+
 
     @Test
     fun simulationIsDeterministicForAFixedSeed() {
