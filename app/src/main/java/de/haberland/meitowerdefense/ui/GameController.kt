@@ -65,7 +65,6 @@ class GameController(initialSession: GameSession) {
         private set
 
     val hudState = mutableStateOf(snapshot(initialSession))
-        private set
 
     fun startPlacing(type: TowerType) {
         inputMode = InputMode.Placing(type)
