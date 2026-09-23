@@ -1,6 +1,7 @@
 package de.haberland.meitowerdefense.ui
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
@@ -9,6 +10,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import de.haberland.meitowerdefense.content.LevelCatalog
 import de.haberland.meitowerdefense.model.LevelRating
 import de.haberland.meitowerdefense.save.FileSaveRepository
@@ -30,6 +34,16 @@ import de.haberland.meitowerdefense.view.GameSurfaceView
 class GameActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // A round shouldn't get interrupted by the screen locking, and the landscape
+        // game area should actually be full screen rather than sharing space with the
+        // status/navigation bars.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
 
         val levelId = intent.getStringExtra(EXTRA_LEVEL_ID)
         val level = levelId?.let { LevelCatalog.byId(it) }

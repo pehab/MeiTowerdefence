@@ -3,6 +3,7 @@ package de.haberland.meitowerdefense.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,14 +11,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,12 +34,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.haberland.meitowerdefense.model.Specialization
 import de.haberland.meitowerdefense.model.TowerType
+import de.haberland.meitowerdefense.sim.GameSimulator
 import de.haberland.meitowerdefense.sim.Tower
 
 @Composable
 fun GameHud(controller: GameController, onExit: () -> Unit) {
     val hud by controller.hudState
     val mode = controller.inputMode
+    var showExitConfirm by remember { mutableStateOf(false) }
+    var showGlossary by remember { mutableStateOf(false) }
 
     // One Column filling the whole overlay: top bar, a weighted Spacer that pushes
     // everything below it down, then the bottom panel - the game canvas shows through
@@ -40,32 +51,85 @@ fun GameHud(controller: GameController, onExit: () -> Unit) {
     // alongside the game canvas (see GameActivity).
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 12.dp, vertical = 6.dp),
+            Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.55f)).padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onExit) { Icon(Icons.Default.Close, "Verlassen", tint = Color.White) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { showExitConfirm = true }) { Icon(Icons.Default.Close, "Level abbrechen", tint = Color.White) }
+                IconButton(onClick = { showGlossary = true }) { Icon(Icons.Default.Info, "Glossar", tint = Color.White) }
+            }
             HudText("Gold: ${hud.gold}")
             HudText("Leben: ${hud.lives}")
             HudText("Welle ${hud.waveIndex.coerceAtMost(hud.totalWaves)}/${hud.totalWaves}")
+            SpeedToggle(current = controller.speedMultiplier, onSelect = { controller.speedMultiplier = it })
         }
 
         Spacer(Modifier.weight(1f))
 
-        Row(
+        Column(
             Modifier.fillMaxWidth().background(Color.Black.copy(alpha = 0.55f)).padding(12.dp),
-            horizontalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            when {
-                mode is InputMode.Placing -> PlacingBar(mode.type, onCancel = controller::cancelPlacing)
-                hud.selectedTower != null -> UpgradePanel(
-                    tower = hud.selectedTower!!,
-                    gold = hud.gold,
-                    onUpgrade = { spec -> controller.upgradeSelectedTower(spec) },
-                    onSell = controller::sellSelectedTower,
-                    onDeselect = controller::deselectTower
-                )
-                else -> BuildBar(gold = hud.gold, onSelectType = controller::startPlacing)
+            if (hud.waitingForWaveStart) {
+                Button(onClick = controller::startNextWave, modifier = Modifier.padding(bottom = 8.dp)) {
+                    Text(
+                        when {
+                            hud.waveIndex == 0 -> "TRAINING STARTEN"
+                            hud.earlyWaveBonusAvailable -> "NÄCHSTE WELLE (+${GameSimulator.EARLY_WAVE_BONUS_GOLD} Gold)"
+                            else -> "NÄCHSTE WELLE"
+                        },
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.Center) {
+                when {
+                    mode is InputMode.Placing -> PlacingBar(mode.type, onCancel = controller::cancelPlacing)
+                    hud.selectedTower != null -> UpgradePanel(
+                        tower = hud.selectedTower!!,
+                        gold = hud.gold,
+                        onUpgrade = { spec -> controller.upgradeSelectedTower(spec) },
+                        onSell = controller::sellSelectedTower,
+                        onDeselect = controller::deselectTower
+                    )
+                    else -> BuildBar(gold = hud.gold, onSelectType = controller::startPlacing)
+                }
+            }
+        }
+    }
+
+    if (showExitConfirm) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirm = false },
+            title = { Text("Level abbrechen?") },
+            text = { Text("Der Fortschritt in diesem Durchlauf geht verloren.") },
+            confirmButton = { TextButton(onClick = onExit) { Text("ABBRECHEN") } },
+            dismissButton = { TextButton(onClick = { showExitConfirm = false }) { Text("WEITERSPIELEN") } }
+        )
+    }
+
+    if (showGlossary) {
+        GlossaryDialog(onDismiss = { showGlossary = false })
+    }
+}
+
+@Composable
+private fun SpeedToggle(current: Float, onSelect: (Float) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        listOf(1f, 2f, 4f).forEach { speed ->
+            val active = current == speed
+            OutlinedButton(
+                onClick = { onSelect(speed) },
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                colors = if (active) {
+                    ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.Black)
+                } else {
+                    ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                }
+            ) {
+                Text("${speed.toInt()}x", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -73,7 +137,7 @@ fun GameHud(controller: GameController, onExit: () -> Unit) {
 
 @Composable
 private fun HudText(text: String) {
-    Text(text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+    Text(text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
 }
 
 @Composable
@@ -118,10 +182,10 @@ private fun UpgradePanel(
         }
 
         if (tower.needsSpecializationChoice) {
-            HudText("Spezialisierung wählen:")
+            val cost = tower.upgradeCost()
+            HudText("Spezialisierung wählen (${cost ?: 0} Gold):")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Specialization.branchesFor(tower.type).forEach { spec ->
-                    val cost = tower.upgradeCost()
                     Button(onClick = { onUpgrade(spec) }, enabled = cost != null && gold >= cost) {
                         Text(spec.displayName)
                     }

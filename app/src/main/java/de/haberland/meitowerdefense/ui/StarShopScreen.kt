@@ -23,7 +23,7 @@ import de.haberland.meitowerdefense.model.MetaUpgradeType
 
 @Composable
 fun StarShopScreen(metaViewModel: MetaViewModel, onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
+    Column(Modifier.fillMaxSize().padding(24.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Sternen-Shop", fontSize = 26.sp, fontWeight = FontWeight.Bold)
             TextButton(onClick = onBack) { Text("Zurück") }
@@ -47,13 +47,18 @@ fun StarShopScreen(metaViewModel: MetaViewModel, onBack: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("Stufe $level/${type.maxLevel}")
-                            if (cost != null) {
-                                Button(
-                                    onClick = { metaViewModel.purchaseUpgrade(type) },
-                                    enabled = metaViewModel.meta.stars >= cost
-                                ) { Text("$cost ★") }
-                            } else {
-                                Text("MAXIMAL", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                if (level > 0) {
+                                    TextButton(onClick = { metaViewModel.resetUpgrade(type) }) { Text("Zurücksetzen") }
+                                }
+                                if (cost != null) {
+                                    Button(
+                                        onClick = { metaViewModel.purchaseUpgrade(type) },
+                                        enabled = metaViewModel.meta.stars >= cost
+                                    ) { Text("$cost ★") }
+                                } else {
+                                    Text("MAXIMAL", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
                             }
                         }
                     }

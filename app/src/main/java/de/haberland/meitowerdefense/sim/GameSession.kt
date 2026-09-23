@@ -22,8 +22,16 @@ data class GameSession(
     val waveIndex: Int = 0,
     val enemiesSpawnedInWave: Int = 0,
     val timeSinceLastSpawn: Float = 0f,
-    val timeUntilNextWave: Float = 0f,
-    val waveInProgress: Boolean = false,
+    /**
+     * True whenever the next wave (waveIndex) hasn't started yet. Wave 1 stays true
+     * until the player explicitly taps Start - see GameSimulator.startNextWave(). Every
+     * later wave also starts this true, but [timeUntilAutoStart] counts down and starts
+     * it automatically once it hits zero, the same as before; startNextWave() lets the
+     * player call it early instead, for a small gold bonus.
+     */
+    val waitingForWaveStart: Boolean = true,
+    /** Only meaningful while waitingForWaveStart && waveIndex > 0 - see above. */
+    val timeUntilAutoStart: Float = 0f,
     val elapsedSeconds: Float = 0f,
     val outcome: GameOutcome = GameOutcome.IN_PROGRESS,
     /** Monotonic counter used to hand out deterministic, unique ids to new towers/enemies/projectiles. */
@@ -34,8 +42,7 @@ data class GameSession(
             level = level,
             meta = meta,
             gold = level.startingGold + meta.startingGoldBonus,
-            lives = level.startingLives + meta.startingLivesBonus,
-            timeUntilNextWave = level.timeBetweenWaves
+            lives = level.startingLives + meta.startingLivesBonus
         )
     }
 }

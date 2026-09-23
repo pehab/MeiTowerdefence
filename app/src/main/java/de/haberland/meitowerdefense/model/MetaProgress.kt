@@ -26,6 +26,18 @@ data class MetaProgress(
 
     fun addStars(amount: Int): MetaProgress = copy(stars = stars + amount)
 
+    /**
+     * Fully refunds every star spent on [type] and resets it to level 0 - lets a player
+     * reallocate stars to a different upgrade without being punished for an earlier
+     * choice. A no-op if [type] is already at level 0.
+     */
+    fun resetUpgrade(type: MetaUpgradeType): MetaProgress {
+        val level = levelOf(type)
+        if (level == 0) return this
+        val refund = (0 until level).sumOf { type.costForNextLevel(it) ?: 0 }
+        return copy(stars = stars + refund, upgradeLevels = upgradeLevels - type)
+    }
+
     // Derived, effective bonuses - the single place every one of these numbers is defined,
     // so e.g. GameSession and the star-shop UI can't drift out of sync on what a level of
     // "Goldader" is actually worth.

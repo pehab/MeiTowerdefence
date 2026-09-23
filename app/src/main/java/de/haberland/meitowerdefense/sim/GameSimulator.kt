@@ -24,6 +24,8 @@ object GameSimulator {
     private const val MIN_BUILD_DISTANCE_FROM_PATH = 0.6f
     private const val PROJECTILE_SPEED = 9f
     private const val SELL_REFUND_FRACTION = 0.6f
+    /** Reward for tapping "Nächste Welle" before the auto-start timer would have fired on its own. */
+    const val EARLY_WAVE_BONUS_GOLD = 15
 
     fun step(session: GameSession, dt: Float, random: Random = Random.Default): GameSession {
         if (session.outcome != GameOutcome.IN_PROGRESS || dt <= 0f) return session
@@ -44,25 +46,29 @@ object GameSimulator {
     private fun advanceWaveSpawning(session: GameSession, dt: Float): GameSession {
         if (session.waveIndex >= session.level.waves.size) return session
 
-        var s = session
-        var spawnBudget = dt
+        if (session.waitingForWaveStart) {
+            // Wave 1 has nothing to count down - it always waits for an explicit tap.
+            if (session.waveIndex == 0) return session
 
-        if (!s.waveInProgress) {
-            val timeLeft = s.timeUntilNextWave - dt
-            if (timeLeft > 0f) return s.copy(timeUntilNextWave = timeLeft)
+            val remaining = session.timeUntilAutoStart - dt
+            if (remaining > 0f) return session.copy(timeUntilAutoStart = remaining)
 
-            // The wave-start threshold was crossed partway through this tick. Carry the
-            // leftover time (how far past the threshold we are) into the spawn budget
-            // below instead of discarding it, so a wave can spawn its first enemy in the
-            // very same tick it starts in rather than always lagging one extra frame.
-            spawnBudget = -timeLeft
-            s = s.copy(waveInProgress = true, timeUntilNextWave = 0f, timeSinceLastSpawn = 0f, enemiesSpawnedInWave = 0)
+            // Auto-start: carry the overflow past zero into this same tick's spawn
+            // budget, so the first enemy doesn't lag an extra frame behind the timer
+            // hitting zero - the same reasoning startNextWave() relies on for a manual
+            // start (see spawnForCurrentWave's own comment).
+            val started = beginSpawning(session.copy(timeUntilAutoStart = 0f))
+            return spawnForCurrentWave(started, spawnBudget = -remaining)
         }
 
-        val wave = s.level.waves[s.waveIndex]
-        var timeBudget = s.timeSinceLastSpawn + spawnBudget
-        var spawnedCount = s.enemiesSpawnedInWave
-        var nextId = s.nextEntityId
+        return spawnForCurrentWave(session, spawnBudget = dt)
+    }
+
+    private fun spawnForCurrentWave(session: GameSession, spawnBudget: Float): GameSession {
+        val wave = session.level.waves[session.waveIndex]
+        var timeBudget = session.timeSinceLastSpawn + spawnBudget
+        var spawnedCount = session.enemiesSpawnedInWave
+        var nextId = session.nextEntityId
         val newEnemies = mutableListOf<Enemy>()
 
         // The first enemy of a wave spawns immediately when the wave starts (threshold
@@ -71,27 +77,49 @@ object GameSimulator {
         while (spawnedCount < wave.count) {
             val threshold = if (spawnedCount == 0) 0f else wave.spawnIntervalSeconds
             if (timeBudget < threshold) break
-            newEnemies += spawnEnemy(s.level, wave, "e-$nextId")
+            newEnemies += spawnEnemy(session.level, wave, "e-$nextId")
             nextId++
             spawnedCount++
             timeBudget -= threshold
         }
 
-        var next = s.copy(
-            enemies = s.enemies + newEnemies,
+        var next = session.copy(
+            enemies = session.enemies + newEnemies,
             enemiesSpawnedInWave = spawnedCount,
             timeSinceLastSpawn = timeBudget,
             nextEntityId = nextId
         )
 
         if (spawnedCount >= wave.count) {
+            // This wave is fully spawned (its enemies may still be alive and walking) -
+            // re-arm the gate, with a fresh auto-start countdown, for the next wave.
             next = next.copy(
                 waveIndex = next.waveIndex + 1,
-                waveInProgress = false,
-                timeUntilNextWave = next.level.timeBetweenWaves
+                waitingForWaveStart = true,
+                timeUntilAutoStart = next.level.timeBetweenWaves
             )
         }
         return next
+    }
+
+    private fun beginSpawning(session: GameSession): GameSession =
+        session.copy(waitingForWaveStart = false, timeSinceLastSpawn = 0f, enemiesSpawnedInWave = 0)
+
+    /**
+     * Player-triggered: starts the next wave right now instead of waiting for it to
+     * auto-start (or, for wave 1, instead of waiting forever). If a timer was still
+     * running - i.e. this wave would otherwise have auto-started later on its own -
+     * awards [EARLY_WAVE_BONUS_GOLD] for calling it early, the common "start next wave
+     * for a bonus" TD mechanic. No bonus for wave 1 (there's no timer to skip) or if
+     * called while a wave is already in progress or the level is done.
+     */
+    fun startNextWave(session: GameSession): GameSession {
+        if (!session.waitingForWaveStart) return session
+        if (session.waveIndex >= session.level.waves.size) return session
+
+        val calledEarly = session.waveIndex > 0 && session.timeUntilAutoStart > 0f
+        val withBonus = if (calledEarly) session.copy(gold = session.gold + EARLY_WAVE_BONUS_GOLD) else session
+        return beginSpawning(withBonus)
     }
 
     private fun spawnEnemy(level: LevelDefinition, wave: WaveEntry, id: String): Enemy {
@@ -149,7 +177,7 @@ object GameSimulator {
         val reachedIds = reached.map { it.id }.toSet()
         return session.copy(
             enemies = session.enemies.filterNot { it.id in reachedIds },
-            lives = (session.lives - reached.size).coerceAtLeast(0)
+            lives = (session.lives - reached.sumOf { it.type.livesCost }).coerceAtLeast(0)
         )
     }
 

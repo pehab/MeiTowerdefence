@@ -31,7 +31,7 @@ fun LevelSelectScreen(
 ) {
     val allBeaten = LevelCatalog.all.all { metaViewModel.bestStars(it) > 0 }
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
+    Column(Modifier.fillMaxSize().padding(24.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Level wählen", fontSize = 26.sp, fontWeight = FontWeight.Bold)
             TextButton(onClick = onBack) { Text("Zurück") }

@@ -7,6 +7,7 @@ import android.graphics.Paint
 import de.haberland.meitowerdefense.model.EnemyType
 import de.haberland.meitowerdefense.model.MetaProgress
 import de.haberland.meitowerdefense.model.TowerType
+import de.haberland.meitowerdefense.model.TypeColors
 import de.haberland.meitowerdefense.model.Vec2
 import de.haberland.meitowerdefense.sim.Enemy
 import de.haberland.meitowerdefense.sim.GameSession
@@ -165,20 +166,9 @@ class GameRenderer {
         EnemyType.BOSS -> 0.46f
     }
 
-    private fun colorForEnemy(type: EnemyType): Int = when (type) {
-        EnemyType.BASIC -> Color.rgb(210, 210, 210)
-        EnemyType.FAST -> Color.rgb(240, 220, 60)
-        EnemyType.ARMORED -> Color.rgb(120, 100, 80)
-        EnemyType.FLYING -> Color.rgb(150, 210, 255)
-        EnemyType.BOSS -> Color.rgb(190, 40, 60)
-    }
+    private fun colorForEnemy(type: EnemyType): Int = TypeColors.enemyColor(type).toInt()
 
-    private fun colorForTower(type: TowerType): Int = when (type) {
-        TowerType.ARCHER -> Color.rgb(90, 170, 90)
-        TowerType.CANNON -> Color.rgb(70, 70, 75)
-        TowerType.FIRE -> Color.rgb(220, 110, 40)
-        TowerType.ICE -> Color.rgb(80, 180, 220)
-    }
+    private fun colorForTower(type: TowerType): Int = TypeColors.towerColor(type).toInt()
 }
 
 /** What to draw for a tower the player is about to place, before they confirm the tap. */

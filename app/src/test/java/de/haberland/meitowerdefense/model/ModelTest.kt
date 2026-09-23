@@ -103,6 +103,27 @@ class MetaProgressTest {
     }
 
     @Test
+    fun resetUpgradeFullyRefundsEveryStarSpentOnIt() {
+        val vm = MetaProgress(stars = 1000)
+        var progress = vm
+        repeat(3) { progress = progress.purchase(MetaUpgradeType.STARTING_LIVES) }
+        assertEquals(3, progress.levelOf(MetaUpgradeType.STARTING_LIVES))
+        val starsAfterPurchases = progress.stars
+
+        val reset = progress.resetUpgrade(MetaUpgradeType.STARTING_LIVES)
+        assertEquals(0, reset.levelOf(MetaUpgradeType.STARTING_LIVES))
+        assertEquals(1000, reset.stars) // exactly back to where it started - full refund
+        assertTrue(reset.stars > starsAfterPurchases)
+    }
+
+    @Test
+    fun resetUpgradeIsANoOpAtLevelZero() {
+        val progress = MetaProgress(stars = 50)
+        val reset = progress.resetUpgrade(MetaUpgradeType.GOLD_INCOME)
+        assertEquals(progress, reset)
+    }
+
+    @Test
     fun derivedBonusesAreZeroAtLevelZeroAndPositiveAfterPurchase() {
         var progress = MetaProgress(stars = 1000)
         assertEquals(1.0f, progress.goldIncomeMultiplier, 0.001f)

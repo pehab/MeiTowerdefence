@@ -11,10 +11,8 @@ import de.haberland.meitowerdefense.model.WaveEntry
  * comments). More levels are meant to be added here later the same way - nothing about
  * GameSimulator or the UI is specific to there being exactly three.
  *
- * Every WaveEntry is one visually distinct wave (its own pre-wave pause via
- * LevelDefinition.timeBetweenWaves) rather than mixed enemy types spawning at once
- * within a single wave - simpler to both author and read, and mixing types in sequence
- * across waves already gives waves 3-4 rounds apart a good ramp without it.
+ * Every WaveEntry is one visually distinct wave rather than mixed enemy types spawning
+ * at once within a single wave - simpler to both author and read.
  */
 object LevelCatalog {
 

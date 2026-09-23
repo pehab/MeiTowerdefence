@@ -21,8 +21,7 @@ class GameSimulatorTest {
     private fun straightLevel(
         waves: List<WaveEntry> = listOf(WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f)),
         startingGold: Int = 500,
-        startingLives: Int = 10,
-        timeBetweenWaves: Float = 1f
+        startingLives: Int = 10
     ) = LevelDefinition(
         id = "test",
         displayName = "Test",
@@ -35,12 +34,15 @@ class GameSimulatorTest {
         airPath = listOf(Vec2(0f, 1f), Vec2(11f, 1f)),
         waves = waves,
         startingGold = startingGold,
-        startingLives = startingLives,
-        timeBetweenWaves = timeBetweenWaves
+        startingLives = startingLives
     )
 
     private fun freshSession(level: LevelDefinition = straightLevel(), meta: MetaProgress = MetaProgress()) =
         GameSession.start(level, meta)
+
+    /** Most simulation tests want a wave already running rather than testing the start gate itself. */
+    private fun freshSessionWithWaveStarted(level: LevelDefinition = straightLevel(), meta: MetaProgress = MetaProgress()) =
+        GameSimulator.startNextWave(freshSession(level, meta))
 
     // --- build ---
 
@@ -57,7 +59,7 @@ class GameSimulatorTest {
     @Test
     fun buildingTooCloseToThePathIsRejected() {
         val session = freshSession()
-        // The ground path runs along row 3; row 3 itself is essentially on the path.
+        // The ground path runs along row 7; row 7 itself is essentially on the path.
         val result = GameSimulator.buildTower(session, TowerType.ARCHER, GridPos(5, 7))
         assertNull(result)
     }
@@ -143,20 +145,104 @@ class GameSimulatorTest {
         assertTrue("refund should be less than the full price paid", sold.gold < goldAfterBuild + TowerType.ARCHER.baseCost)
     }
 
-    // --- tick simulation ---
+    // --- manual wave gate ---
 
     @Test
-    fun anEnemySpawnsOnlyAfterTheWaveStartDelay() {
-        val session = freshSession(level = straightLevel(timeBetweenWaves = 2f))
-        val justBefore = GameSimulator.step(session, dt = 1.9f)
-        assertTrue(justBefore.enemies.isEmpty())
-        val justAfter = GameSimulator.step(justBefore, dt = 0.2f)
-        assertTrue(justAfter.enemies.isNotEmpty())
+    fun noEnemiesSpawnBeforeStartNextWaveIsCalled() {
+        var session = freshSession()
+        assertTrue(session.waitingForWaveStart)
+        repeat(100) { session = GameSimulator.step(session, dt = 0.5f) }
+        assertTrue("no wave was started, so nothing should have spawned", session.enemies.isEmpty())
     }
 
     @Test
+    fun startNextWaveSpawnsTheFirstEnemyImmediately() {
+        val session = freshSession()
+        val started = GameSimulator.startNextWave(session)
+        assertTrue(!started.waitingForWaveStart)
+        val afterOneTinyTick = GameSimulator.step(started, dt = 0.001f)
+        assertTrue("the first enemy of a wave should not need to wait a full spawn interval", afterOneTinyTick.enemies.isNotEmpty())
+    }
+
+    @Test
+    fun startNextWaveIsANoOpWhileAWaveIsAlreadyInProgress() {
+        val session = freshSession()
+        val started = GameSimulator.startNextWave(session)
+        val startedAgain = GameSimulator.startNextWave(started)
+        assertEquals(started, startedAgain)
+    }
+
+    @Test
+    fun startNextWaveIsANoOpOnceAllWavesAreDone() {
+        val level = straightLevel(waves = listOf(WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f)))
+        var session = freshSessionWithWaveStarted(level)
+        repeat(500) {
+            if (session.outcome == GameOutcome.IN_PROGRESS) session = GameSimulator.step(session, dt = 0.05f)
+        }
+        val afterConcluded = GameSimulator.startNextWave(session)
+        assertEquals(session, afterConcluded)
+    }
+
+    @Test
+    fun waveTwoAutoStartsOnItsOwnAfterTimeBetweenWavesWithNoBonus() {
+        val level = straightLevel(
+            waves = listOf(
+                WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f),
+                WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f)
+            )
+        ).copy(timeBetweenWaves = 2f)
+        var session = freshSessionWithWaveStarted(level)
+        // Wave 1's single enemy spawns and wave 1 finishes spawning within this same tick.
+        session = GameSimulator.step(session, dt = 0.1f)
+        assertEquals(1, session.nextEntityId)
+        assertEquals(1, session.waveIndex)
+        assertTrue(session.waitingForWaveStart)
+        val goldAfterWaveOneSpawned = session.gold
+
+        // Just under the 2s auto-start delay: still waiting, nothing new spawned.
+        session = GameSimulator.step(session, dt = 1.7f)
+        assertEquals(1, session.nextEntityId)
+
+        // Past the delay: wave 2 auto-starts on its own and spawns immediately (no
+        // extra-frame lag), with no early-call bonus since nobody called it early.
+        session = GameSimulator.step(session, dt = 0.5f)
+        assertEquals(2, session.nextEntityId)
+        assertEquals(goldAfterWaveOneSpawned, session.gold)
+    }
+
+    @Test
+    fun callingWaveTwoEarlyGrantsABonusButAutoStartDoesNot() {
+        val level = straightLevel(
+            waves = listOf(
+                WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f),
+                WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f)
+            )
+        ).copy(timeBetweenWaves = 10f) // long enough that "early" is unambiguous
+        var session = freshSessionWithWaveStarted(level)
+        session = GameSimulator.step(session, dt = 0.5f) // wave 1 spawns, then waveIndex becomes 1
+        assertEquals(1, session.waveIndex)
+        assertTrue(session.timeUntilAutoStart > 0f)
+        val goldBeforeEarlyCall = session.gold
+
+        session = GameSimulator.startNextWave(session)
+
+        assertEquals(goldBeforeEarlyCall + GameSimulator.EARLY_WAVE_BONUS_GOLD, session.gold)
+        assertTrue(!session.waitingForWaveStart)
+    }
+
+    @Test
+    fun waveOneNeverAutoStartsNoMatterHowLongYouWait() {
+        var session = freshSession()
+        repeat(1000) { session = GameSimulator.step(session, dt = 1f) } // ~1000 simulated seconds
+        assertTrue(session.waitingForWaveStart)
+        assertTrue(session.enemies.isEmpty())
+    }
+
+    // --- tick simulation ---
+
+    @Test
     fun anEnemyReachingTheEndCostsALifeAndIsRemoved() {
-        var session = freshSession(level = straightLevel(timeBetweenWaves = 0f))
+        var session = freshSessionWithWaveStarted()
         val startingLives = session.lives
         repeat(2000) {
             if (session.outcome == GameOutcome.IN_PROGRESS) session = GameSimulator.step(session, dt = 0.05f)
@@ -166,8 +252,19 @@ class GameSimulatorTest {
     }
 
     @Test
+    fun aBossReachingTheEndCostsMoreThanOneLife() {
+        val level = straightLevel(waves = listOf(WaveEntry(EnemyType.BOSS, count = 1, spawnIntervalSeconds = 1f)), startingLives = 20)
+        var session = freshSessionWithWaveStarted(level)
+        repeat(3000) {
+            if (session.outcome == GameOutcome.IN_PROGRESS) session = GameSimulator.step(session, dt = 0.05f)
+        }
+        assertEquals(20 - EnemyType.BOSS.livesCost, session.lives)
+        assertTrue("a boss should cost noticeably more than a normal enemy", EnemyType.BOSS.livesCost > 1)
+    }
+
+    @Test
     fun aStrongWellPlacedTowerKillsAnEnemyBeforeItReachesTheEnd() {
-        var session = freshSession(level = straightLevel(startingGold = 10_000, timeBetweenWaves = 0f))
+        var session = freshSession(level = straightLevel(startingGold = 10_000))
         session = GameSimulator.buildTower(session, TowerType.CANNON, GridPos(2, 8))!!
         // Max the tower out so a single BASIC enemy dies almost immediately.
         val towerId = session.towers.first().id
@@ -178,6 +275,7 @@ class GameSimulatorTest {
                 GameSimulator.upgradeTower(session, towerId)!!
             }
         }
+        session = GameSimulator.startNextWave(session)
 
         val startingLives = session.lives
         val goldBeforeKill = session.gold
@@ -196,8 +294,7 @@ class GameSimulatorTest {
         // or in short order, well before either could reach the end of a long path.
         val level = straightLevel(
             waves = listOf(WaveEntry(EnemyType.BASIC, count = 2, spawnIntervalSeconds = 0.1f)),
-            startingGold = 10_000,
-            timeBetweenWaves = 0f
+            startingGold = 10_000
         )
         var session = freshSession(level)
         session = GameSimulator.buildTower(session, TowerType.CANNON, GridPos(2, 8))!!
@@ -209,6 +306,7 @@ class GameSimulatorTest {
                 GameSimulator.upgradeTower(session, towerId)!!
             }
         }
+        session = GameSimulator.startNextWave(session)
 
         repeat(200) {
             if (session.outcome == GameOutcome.IN_PROGRESS) session = GameSimulator.step(session, dt = 0.05f)
@@ -220,7 +318,7 @@ class GameSimulatorTest {
     @Test
     fun aGroundOnlyTowerCannotTargetAFlyingEnemy() {
         val level = straightLevel(waves = listOf(WaveEntry(EnemyType.FLYING, count = 1, spawnIntervalSeconds = 1f)))
-        var session = freshSession(level.copy(startingGold = 10_000, timeBetweenWaves = 0f))
+        var session = freshSession(level.copy(startingGold = 10_000))
         // Cannon cannot hit flying enemies; place it right next to the air path.
         session = GameSimulator.buildTower(session, TowerType.CANNON, GridPos(2, 2))!!
         val towerId = session.towers.first().id
@@ -231,6 +329,7 @@ class GameSimulatorTest {
                 GameSimulator.upgradeTower(session, towerId)!!
             }
         }
+        session = GameSimulator.startNextWave(session)
 
         val startingLives = session.lives
         repeat(400) {
@@ -243,9 +342,9 @@ class GameSimulatorTest {
 
     @Test
     fun iceTowerSlowMakesAnEnemyTakeLongerToCrossThanItWouldUnslowed() {
-        val level = straightLevel(waves = listOf(WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f)), timeBetweenWaves = 0f)
+        val level = straightLevel(waves = listOf(WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f)))
         val baselineTicksToReachEnd = run {
-            var session = freshSession(level)
+            var session = freshSessionWithWaveStarted(level)
             var ticks = 0
             while (session.enemies.isNotEmpty() || session.lives == session.level.startingLives) {
                 session = GameSimulator.step(session, dt = 0.05f)
@@ -259,6 +358,7 @@ class GameSimulatorTest {
         val slowedTicksToReachEnd = run {
             var session = freshSession(level.copy(startingGold = 10_000))
             session = GameSimulator.buildTower(session, TowerType.ICE, GridPos(5, 8))!!
+            session = GameSimulator.startNextWave(session)
             var ticks = 0
             while (session.lives == session.level.startingLives) {
                 session = GameSimulator.step(session, dt = 0.05f)
@@ -276,7 +376,7 @@ class GameSimulatorTest {
 
     @Test
     fun winTriggersOnceAllWavesAreClearedAndNoEnemiesRemain() {
-        val level = straightLevel(startingGold = 10_000, timeBetweenWaves = 0f)
+        val level = straightLevel(startingGold = 10_000)
         var session = freshSession(level)
         session = GameSimulator.buildTower(session, TowerType.CANNON, GridPos(2, 8))!!
         val towerId = session.towers.first().id
@@ -287,6 +387,7 @@ class GameSimulatorTest {
                 GameSimulator.upgradeTower(session, towerId)!!
             }
         }
+        session = GameSimulator.startNextWave(session)
         repeat(200) {
             if (session.outcome == GameOutcome.IN_PROGRESS) session = GameSimulator.step(session, dt = 0.05f)
         }
@@ -297,10 +398,9 @@ class GameSimulatorTest {
     fun loseTriggersOnceLivesReachZero() {
         val level = straightLevel(
             waves = listOf(WaveEntry(EnemyType.BASIC, count = 20, spawnIntervalSeconds = 0.05f)),
-            startingLives = 3,
-            timeBetweenWaves = 0f
+            startingLives = 3
         )
-        var session = freshSession(level) // no towers at all - every enemy gets through
+        var session = freshSessionWithWaveStarted(level) // no towers at all - every enemy gets through
         repeat(3000) {
             if (session.outcome == GameOutcome.IN_PROGRESS) session = GameSimulator.step(session, dt = 0.05f)
         }
@@ -310,8 +410,8 @@ class GameSimulatorTest {
 
     @Test
     fun stepIsANoOpOnceTheGameHasConcluded() {
-        val level = straightLevel(startingLives = 1, waves = listOf(WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f)), timeBetweenWaves = 0f)
-        var session = freshSession(level)
+        val level = straightLevel(startingLives = 1, waves = listOf(WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f)))
+        var session = freshSessionWithWaveStarted(level)
         repeat(500) {
             if (session.outcome == GameOutcome.IN_PROGRESS) session = GameSimulator.step(session, dt = 0.05f)
         }
@@ -324,13 +424,13 @@ class GameSimulatorTest {
     fun simulationIsDeterministicForAFixedSeed() {
         val level = straightLevel(
             waves = listOf(WaveEntry(EnemyType.FAST, count = 5, spawnIntervalSeconds = 0.2f)),
-            startingGold = 300,
-            timeBetweenWaves = 0f
+            startingGold = 300
         )
 
         fun run(): GameSession {
             var session = freshSession(level)
             session = GameSimulator.buildTower(session, TowerType.ARCHER, GridPos(3, 8))!!
+            session = GameSimulator.startNextWave(session)
             val random = Random(123)
             repeat(500) {
                 if (session.outcome == GameOutcome.IN_PROGRESS) session = GameSimulator.step(session, dt = 0.05f, random = random)

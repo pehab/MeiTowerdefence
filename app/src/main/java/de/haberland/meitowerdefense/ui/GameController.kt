@@ -16,6 +16,7 @@ sealed interface GameAction {
     data class Build(val type: TowerType, val pos: GridPos) : GameAction
     data class Upgrade(val towerId: String, val specialization: Specialization? = null) : GameAction
     data class Sell(val towerId: String) : GameAction
+    data object StartNextWave : GameAction
 }
 
 sealed interface InputMode {
@@ -29,6 +30,9 @@ data class HudSnapshot(
     val lives: Int,
     val waveIndex: Int,
     val totalWaves: Int,
+    val waitingForWaveStart: Boolean,
+    /** Whether tapping startNextWave() right now would pay GameSimulator.EARLY_WAVE_BONUS_GOLD. */
+    val earlyWaveBonusAvailable: Boolean,
     val outcome: GameOutcome,
     val selectedTower: Tower?
 )
@@ -37,7 +41,8 @@ data class HudSnapshot(
  * Owns the authoritative [GameSession] and is the only thing allowed to mutate it -
  * GameThread calls [tick] once per frame (background thread); touch input and the
  * Compose HUD only ever *submit* [GameAction]s via [onTapGrid]/[upgradeSelectedTower]/
- * [sellSelectedTower] (main thread), queued and applied at the start of the next tick.
+ * [sellSelectedTower]/[startNextWave] (main thread), queued and applied at the start of
+ * the next tick.
  *
  * That queue is what makes this safe without locking the whole session on every touch
  * event: two threads never write [session] at once, only GameThread does, and the
@@ -63,6 +68,15 @@ class GameController(initialSession: GameSession) {
 
     var selectedTowerId by mutableStateOf<String?>(null)
         private set
+
+    /**
+     * 1x/2x/4x simulation speed. Read from GameThread's background thread in [tick] (as
+     * a scale factor on that frame's dt), written from the HUD's speed buttons on the
+     * main thread - safe for the same reason [session] is: Compose State's snapshot
+     * system supports cross-thread reads/writes, and this is the only thing that ever
+     * writes it.
+     */
+    var speedMultiplier by mutableStateOf(1f)
 
     val hudState = mutableStateOf(snapshot(initialSession))
 
@@ -103,6 +117,10 @@ class GameController(initialSession: GameSession) {
         selectedTowerId = null
     }
 
+    fun startNextWave() {
+        pendingActions.add(GameAction.StartNextWave)
+    }
+
     /** Called once per frame by [de.haberland.meitowerdefense.engine.GameThread] - background thread. */
     fun tick(dt: Float) {
         var current = session
@@ -110,7 +128,7 @@ class GameController(initialSession: GameSession) {
             val action = pendingActions.poll() ?: break
             current = applyAction(current, action) ?: current
         }
-        current = GameSimulator.step(current, dt)
+        current = GameSimulator.step(current, dt * speedMultiplier)
         session = current
         hudState.value = snapshot(current)
     }
@@ -119,6 +137,7 @@ class GameController(initialSession: GameSession) {
         is GameAction.Build -> GameSimulator.buildTower(session, action.type, action.pos)
         is GameAction.Upgrade -> GameSimulator.upgradeTower(session, action.towerId, action.specialization)
         is GameAction.Sell -> GameSimulator.sellTower(session, action.towerId)
+        GameAction.StartNextWave -> GameSimulator.startNextWave(session)
     }
 
     private fun snapshot(s: GameSession) = HudSnapshot(
@@ -126,6 +145,8 @@ class GameController(initialSession: GameSession) {
         lives = s.lives,
         waveIndex = s.waveIndex.coerceAtMost(s.level.waves.size),
         totalWaves = s.level.waves.size,
+        waitingForWaveStart = s.waitingForWaveStart,
+        earlyWaveBonusAvailable = s.waveIndex > 0 && s.timeUntilAutoStart > 0f,
         outcome = s.outcome,
         selectedTower = s.towers.find { it.id == selectedTowerId }
     )

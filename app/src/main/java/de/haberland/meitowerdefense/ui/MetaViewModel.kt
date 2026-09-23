@@ -63,6 +63,11 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         persist()
     }
 
+    fun resetUpgrade(type: MetaUpgradeType) {
+        meta = meta.resetUpgrade(type)
+        persist()
+    }
+
     /** Records the outcome of a finished level: updates best stars, unlocks the next level, awards stars. */
     fun recordLevelResult(level: LevelDefinition, remainingLives: Int, won: Boolean) {
         val stars = LevelRating.starsFor(level.startingLives, remainingLives, won)

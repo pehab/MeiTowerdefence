@@ -20,6 +20,7 @@ data class LevelDefinition(
     val waves: List<WaveEntry>,
     val startingGold: Int,
     val startingLives: Int,
+    /** Auto-start delay for wave 2 onward. Wave 1 never auto-starts - see GameSimulator.startNextWave(). */
     val timeBetweenWaves: Float = 4f
 ) {
     init {

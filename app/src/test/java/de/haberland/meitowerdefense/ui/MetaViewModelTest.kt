@@ -71,6 +71,22 @@ class MetaViewModelTest {
     }
 
     @Test
+    fun resettingAnUpgradeRefundsStarsAndPersists() {
+        val repo = FakeSaveRepository(SaveData(stars = 100))
+        val vm = MetaViewModel(repo)
+        vm.purchaseUpgrade(MetaUpgradeType.STARTING_LIVES)
+        vm.purchaseUpgrade(MetaUpgradeType.STARTING_LIVES)
+        val starsBeforeReset = vm.meta.stars
+
+        vm.resetUpgrade(MetaUpgradeType.STARTING_LIVES)
+
+        assertEquals(0, vm.meta.levelOf(MetaUpgradeType.STARTING_LIVES))
+        assertEquals(100, vm.meta.stars) // fully refunded back to the starting amount
+        assertTrue(vm.meta.stars > starsBeforeReset)
+        assertEquals(vm.meta.stars, repo.load().stars)
+    }
+
+    @Test
     fun recordEndlessResultOnlyKeepsTheBestWaveReached() {
         val vm = MetaViewModel(FakeSaveRepository())
         vm.recordEndlessResult(5)
