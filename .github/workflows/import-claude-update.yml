@@ -53,3 +53,5 @@ jobs:
           fi
           git commit -m "Claude-Update sinnvoll übernehmen"
           git push origin HEAD:main
+
+# retrigger after corrected import chunks
