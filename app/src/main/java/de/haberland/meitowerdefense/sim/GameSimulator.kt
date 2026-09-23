@@ -1,11 +1,13 @@
 package de.haberland.meitowerdefense.sim
 
+import de.haberland.meitowerdefense.content.EndlessWaves
 import de.haberland.meitowerdefense.model.GridPos
 import de.haberland.meitowerdefense.model.LevelDefinition
 import de.haberland.meitowerdefense.model.Specialization
 import de.haberland.meitowerdefense.model.TowerBalance
 import de.haberland.meitowerdefense.model.TowerType
 import de.haberland.meitowerdefense.model.Vec2
+import de.haberland.meitowerdefense.model.ScheduledSpawn
 import de.haberland.meitowerdefense.model.WaveEntry
 import kotlin.random.Random
 
@@ -43,20 +45,20 @@ object GameSimulator {
 
     // --- wave spawning ---
 
+    private fun waveFor(session: GameSession): WaveEntry? =
+        if (session.level.endless) EndlessWaves.wave(session.waveIndex)
+        else session.level.waves.getOrNull(session.waveIndex)
+
     private fun advanceWaveSpawning(session: GameSession, dt: Float): GameSession {
-        if (session.waveIndex >= session.level.waves.size) return session
+        if (waveFor(session) == null) return session
 
         if (session.waitingForWaveStart) {
-            // Wave 1 has nothing to count down - it always waits for an explicit tap.
+            // Wave 1 has no countdown and waits for an explicit tap.
             if (session.waveIndex == 0) return session
 
             val remaining = session.timeUntilAutoStart - dt
             if (remaining > 0f) return session.copy(timeUntilAutoStart = remaining)
 
-            // Auto-start: carry the overflow past zero into this same tick's spawn
-            // budget, so the first enemy doesn't lag an extra frame behind the timer
-            // hitting zero - the same reasoning startNextWave() relies on for a manual
-            // start (see spawnForCurrentWave's own comment).
             val started = beginSpawning(session.copy(timeUntilAutoStart = 0f))
             return spawnForCurrentWave(started, spawnBudget = -remaining)
         }
@@ -65,34 +67,29 @@ object GameSimulator {
     }
 
     private fun spawnForCurrentWave(session: GameSession, spawnBudget: Float): GameSession {
-        val wave = session.level.waves[session.waveIndex]
-        var timeBudget = session.timeSinceLastSpawn + spawnBudget
-        var spawnedCount = session.enemiesSpawnedInWave
+        val wave = waveFor(session) ?: return session
+        val schedule = wave.schedule()
+        val elapsedInWave = session.timeSinceLastSpawn + spawnBudget
+        var spawnIndex = session.enemiesSpawnedInWave
         var nextId = session.nextEntityId
         val newEnemies = mutableListOf<Enemy>()
 
-        // The first enemy of a wave spawns immediately when the wave starts (threshold
-        // 0), not after waiting a full spawnIntervalSeconds like every subsequent one -
-        // otherwise a wave "starting" would be invisible to the player for a beat.
-        while (spawnedCount < wave.count) {
-            val threshold = if (spawnedCount == 0) 0f else wave.spawnIntervalSeconds
-            if (timeBudget < threshold) break
-            newEnemies += spawnEnemy(session.level, wave, "e-$nextId")
+        while (spawnIndex < schedule.size && schedule[spawnIndex].atSeconds <= elapsedInWave) {
+            newEnemies += spawnEnemy(session.level, schedule[spawnIndex], "e-$nextId")
             nextId++
-            spawnedCount++
-            timeBudget -= threshold
+            spawnIndex++
         }
 
         var next = session.copy(
             enemies = session.enemies + newEnemies,
-            enemiesSpawnedInWave = spawnedCount,
-            timeSinceLastSpawn = timeBudget,
+            enemiesSpawnedInWave = spawnIndex,
+            // Kept under the old field name for save/test compatibility; semantically
+            // this is elapsed time inside the current wave now that groups can overlap.
+            timeSinceLastSpawn = elapsedInWave,
             nextEntityId = nextId
         )
 
-        if (spawnedCount >= wave.count) {
-            // This wave is fully spawned (its enemies may still be alive and walking) -
-            // re-arm the gate, with a fresh auto-start countdown, for the next wave.
+        if (spawnIndex >= schedule.size) {
             next = next.copy(
                 waveIndex = next.waveIndex + 1,
                 waitingForWaveStart = true,
@@ -105,29 +102,29 @@ object GameSimulator {
     private fun beginSpawning(session: GameSession): GameSession =
         session.copy(waitingForWaveStart = false, timeSinceLastSpawn = 0f, enemiesSpawnedInWave = 0)
 
-    /**
-     * Player-triggered: starts the next wave right now instead of waiting for it to
-     * auto-start (or, for wave 1, instead of waiting forever). If a timer was still
-     * running - i.e. this wave would otherwise have auto-started later on its own -
-     * awards [EARLY_WAVE_BONUS_GOLD] for calling it early, the common "start next wave
-     * for a bonus" TD mechanic. No bonus for wave 1 (there's no timer to skip) or if
-     * called while a wave is already in progress or the level is done.
-     */
     fun startNextWave(session: GameSession): GameSession {
-        if (!session.waitingForWaveStart) return session
-        if (session.waveIndex >= session.level.waves.size) return session
+        if (!session.waitingForWaveStart || waveFor(session) == null) return session
 
         val calledEarly = session.waveIndex > 0 && session.timeUntilAutoStart > 0f
-        val withBonus = if (calledEarly) session.copy(gold = session.gold + EARLY_WAVE_BONUS_GOLD) else session
-        return beginSpawning(withBonus)
+        val bonus = if (calledEarly) EARLY_WAVE_BONUS_GOLD else 0
+        return beginSpawning(
+            session.copy(
+                gold = session.gold + bonus,
+                stats = if (bonus > 0) {
+                    session.stats.copy(goldEarned = session.stats.goldEarned + bonus)
+                } else {
+                    session.stats
+                }
+            )
+        )
     }
 
-    private fun spawnEnemy(level: LevelDefinition, wave: WaveEntry, id: String): Enemy {
-        val path = if (wave.enemyType.flying) level.airPath else level.groundPath
-        val hp = wave.enemyType.baseHp * wave.hpMultiplier
+    private fun spawnEnemy(level: LevelDefinition, spawn: ScheduledSpawn, id: String): Enemy {
+        val path = if (spawn.enemyType.flying) level.airPath else level.groundPath
+        val hp = spawn.enemyType.baseHp * spawn.hpMultiplier
         return Enemy(
             id = id,
-            type = wave.enemyType,
+            type = spawn.enemyType,
             maxHp = hp,
             hp = hp,
             position = path.first(),
@@ -175,9 +172,11 @@ object GameSimulator {
         }
         if (reached.isEmpty()) return session
         val reachedIds = reached.map { it.id }.toSet()
+        val livesLost = reached.sumOf { it.type.livesCost }
         return session.copy(
             enemies = session.enemies.filterNot { it.id in reachedIds },
-            lives = (session.lives - reached.sumOf { it.type.livesCost }).coerceAtLeast(0)
+            lives = (session.lives - livesLost).coerceAtLeast(0),
+            stats = session.stats.copy(livesLost = session.stats.livesLost + livesLost)
         )
     }
 
@@ -302,12 +301,17 @@ object GameSimulator {
         val goldEarned = dead.sumOf { (it.type.goldReward * session.meta.goldIncomeMultiplier).toInt() }
         return session.copy(
             enemies = session.enemies.filterNot { it.isDead },
-            gold = session.gold + goldEarned
+            gold = session.gold + goldEarned,
+            stats = session.stats.copy(
+                enemiesKilled = session.stats.enemiesKilled + dead.size,
+                goldEarned = session.stats.goldEarned + goldEarned
+            )
         )
     }
 
     private fun checkOutcome(session: GameSession): GameSession {
         if (session.lives <= 0) return session.copy(outcome = GameOutcome.LOST, lives = 0)
+        if (session.level.endless) return session
         val allWavesSpawned = session.waveIndex >= session.level.waves.size
         return if (allWavesSpawned && session.enemies.isEmpty()) session.copy(outcome = GameOutcome.WON) else session
     }
@@ -331,7 +335,8 @@ object GameSimulator {
         return session.copy(
             towers = session.towers + tower,
             gold = session.gold - type.baseCost,
-            nextEntityId = session.nextEntityId + 1
+            nextEntityId = session.nextEntityId + 1,
+            stats = session.stats.copy(towersBuilt = session.stats.towersBuilt + 1)
         )
     }
 
@@ -353,7 +358,8 @@ object GameSimulator {
         )
         return session.copy(
             towers = session.towers.map { if (it.id == towerId) upgraded else it },
-            gold = session.gold - cost
+            gold = session.gold - cost,
+            stats = session.stats.copy(towersUpgraded = session.stats.towersUpgraded + 1)
         )
     }
 
@@ -361,7 +367,8 @@ object GameSimulator {
         val tower = session.towers.find { it.id == towerId } ?: return null
         return session.copy(
             towers = session.towers.filterNot { it.id == towerId },
-            gold = session.gold + sellValue(tower)
+            gold = session.gold + sellValue(tower),
+            stats = session.stats.copy(towersSold = session.stats.towersSold + 1)
         )
     }
 
