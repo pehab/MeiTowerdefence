@@ -29,7 +29,7 @@ data class HudSnapshot(
     val gold: Int,
     val lives: Int,
     val waveIndex: Int,
-    val totalWaves: Int,
+    val totalWaves: Int?,
     val waitingForWaveStart: Boolean,
     /** Whether tapping startNextWave() right now would pay GameSimulator.EARLY_WAVE_BONUS_GOLD. */
     val earlyWaveBonusAvailable: Boolean,
@@ -144,7 +144,7 @@ class GameController(initialSession: GameSession) {
         gold = s.gold,
         lives = s.lives,
         waveIndex = s.waveIndex.coerceAtMost(s.level.waves.size),
-        totalWaves = s.level.waves.size,
+        totalWaves = if (s.level.endless) null else s.level.waves.size,
         waitingForWaveStart = s.waitingForWaveStart,
         earlyWaveBonusAvailable = s.waveIndex > 0 && s.timeUntilAutoStart > 0f,
         outcome = s.outcome,
