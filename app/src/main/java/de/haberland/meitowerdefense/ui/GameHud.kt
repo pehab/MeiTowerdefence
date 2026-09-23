@@ -62,11 +62,12 @@ fun GameHud(controller: GameController, onExit: () -> Unit) {
             HudText("Gold: ${hud.gold}")
             HudText("Leben: ${hud.lives}")
             val waveNumber = hud.waveIndex + 1
+            val totalWaves = hud.totalWaves
             HudText(
-                if (hud.totalWaves == null) {
+                if (totalWaves == null) {
                     "Welle $waveNumber · ∞"
                 } else {
-                    "Welle ${waveNumber.coerceAtMost(hud.totalWaves)}/${hud.totalWaves}"
+                    "Welle ${waveNumber.coerceAtMost(totalWaves)}/$totalWaves"
                 }
             )
             SpeedToggle(current = controller.speedMultiplier, onSelect = { controller.speedMultiplier = it })
