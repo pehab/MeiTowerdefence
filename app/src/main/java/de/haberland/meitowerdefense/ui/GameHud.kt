@@ -61,7 +61,14 @@ fun GameHud(controller: GameController, onExit: () -> Unit) {
             }
             HudText("Gold: ${hud.gold}")
             HudText("Leben: ${hud.lives}")
-            HudText("Welle ${hud.waveIndex.coerceAtMost(hud.totalWaves)}/${hud.totalWaves}")
+            val waveNumber = hud.waveIndex + 1
+            HudText(
+                if (hud.totalWaves == null) {
+                    "Welle $waveNumber · ∞"
+                } else {
+                    "Welle ${waveNumber.coerceAtMost(hud.totalWaves)}/${hud.totalWaves}"
+                }
+            )
             SpeedToggle(current = controller.speedMultiplier, onSelect = { controller.speedMultiplier = it })
         }
 
@@ -75,7 +82,7 @@ fun GameHud(controller: GameController, onExit: () -> Unit) {
                 Button(onClick = controller::startNextWave, modifier = Modifier.padding(bottom = 8.dp)) {
                     Text(
                         when {
-                            hud.waveIndex == 0 -> "TRAINING STARTEN"
+                            hud.waveIndex == 0 -> if (hud.totalWaves == null) "ENDLOSMODUS STARTEN" else "TRAINING STARTEN"
                             hud.earlyWaveBonusAvailable -> "NÄCHSTE WELLE (+${GameSimulator.EARLY_WAVE_BONUS_GOLD} Gold)"
                             else -> "NÄCHSTE WELLE"
                         },
