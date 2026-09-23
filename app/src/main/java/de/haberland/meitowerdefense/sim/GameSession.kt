@@ -34,6 +34,7 @@ data class GameSession(
     val timeUntilAutoStart: Float = 0f,
     val elapsedSeconds: Float = 0f,
     val outcome: GameOutcome = GameOutcome.IN_PROGRESS,
+    val stats: RunStats = RunStats(),
     /** Monotonic counter used to hand out deterministic, unique ids to new towers/enemies/projectiles. */
     val nextEntityId: Int = 0
 ) {
