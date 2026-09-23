@@ -27,6 +27,7 @@ jobs:
           mkdir -p /tmp/meitowerdefence
           unzip -q /tmp/meitowerdefence.zip -d /tmp/meitowerdefence
           cp -a /tmp/meitowerdefence/MeiTowerDefense/. .
+          sed -i '/org.jetbrains.kotlin.android/d' build.gradle.kts app/build.gradle.kts
           rm -rf .import
           rm -f .github/workflows/import.yml
 
