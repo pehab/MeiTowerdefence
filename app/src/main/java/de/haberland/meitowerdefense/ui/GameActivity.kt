@@ -48,9 +48,6 @@ class GameActivity : ComponentActivity() {
         val levelId = intent.getStringExtra(EXTRA_LEVEL_ID)
         val level = levelId?.let { LevelCatalog.byId(it) }
         if (level == null) {
-            // Unknown or not-yet-implemented level id (e.g. endless mode - see
-            // MainActivity.ENDLESS_LEVEL_ID). Nothing sensible to show; bail out rather
-            // than crash on a null level.
             finish()
             return
         }
@@ -70,18 +67,31 @@ class GameActivity : ComponentActivity() {
                     val hud by controller.hudState
                     LaunchedEffect(hud.outcome) {
                         if (hud.outcome != GameOutcome.IN_PROGRESS) {
-                            metaViewModel.recordLevelResult(
-                                level = level,
-                                remainingLives = controller.session.lives,
-                                won = hud.outcome == GameOutcome.WON
-                            )
+                            if (level.endless) {
+                                metaViewModel.recordEndlessResult(endlessWaveReached(controller.session))
+                            } else {
+                                metaViewModel.recordLevelResult(
+                                    level = level,
+                                    remainingLives = controller.session.lives,
+                                    won = hud.outcome == GameOutcome.WON
+                                )
+                            }
                         }
                     }
 
                     if (hud.outcome != GameOutcome.IN_PROGRESS) {
+                        val endlessWave = if (level.endless) endlessWaveReached(controller.session) else null
                         LevelEndDialog(
                             won = hud.outcome == GameOutcome.WON,
-                            stars = LevelRating.starsFor(level.startingLives, controller.session.lives, hud.outcome == GameOutcome.WON),
+                            stars = if (level.endless) 0 else LevelRating.starsFor(
+                                level.startingLives,
+                                controller.session.lives,
+                                hud.outcome == GameOutcome.WON
+                            ),
+                            stats = controller.session.stats,
+                            elapsedSeconds = controller.session.elapsedSeconds,
+                            endlessWave = endlessWave,
+                            endlessBestWave = if (level.endless) maxOf(metaViewModel.endlessBestWave, endlessWave ?: 0) else null,
                             onDone = { finish() }
                         )
                     }
@@ -89,6 +99,12 @@ class GameActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun endlessWaveReached(session: GameSession): Int =
+        maxOf(
+            1,
+            session.waveIndex + if (session.waitingForWaveStart) 0 else 1
+        )
 
     companion object {
         const val EXTRA_LEVEL_ID = "level_id"
