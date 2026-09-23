@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - ".import/**"
       - ".github/workflows/import.yml"
 
 permissions:
@@ -28,8 +27,8 @@ jobs:
           unzip -q /tmp/meitowerdefence.zip -d /tmp/meitowerdefence
           cp -a /tmp/meitowerdefence/MeiTowerDefense/. .
           sed -i '/org.jetbrains.kotlin.android/d' build.gradle.kts app/build.gradle.kts
+          rm -f .github/workflows/android.yml
           rm -rf .import
-          rm -f .github/workflows/import.yml
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
