@@ -213,6 +213,7 @@ private fun UpgradePanel(
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         PanelTitle("TURM")
         HudText("${tower.type.displayName} · Stufe ${tower.level}")
+        tower.specialization?.let { Text(it.displayName, color = HudGold, fontSize = 12.sp) }
         HudButton("Schließen", onClick = onDeselect, modifier = Modifier.fillMaxWidth())
         if (tower.needsSpecializationChoice) {
             val cost = tower.upgradeCost()

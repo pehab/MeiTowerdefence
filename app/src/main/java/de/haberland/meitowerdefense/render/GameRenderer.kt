@@ -7,11 +7,13 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import de.haberland.meitowerdefense.R
 import de.haberland.meitowerdefense.model.EnemyType
 import de.haberland.meitowerdefense.model.GridPos
 import de.haberland.meitowerdefense.model.MetaProgress
+import de.haberland.meitowerdefense.model.Specialization
 import de.haberland.meitowerdefense.model.TowerType
 import de.haberland.meitowerdefense.model.TypeColors
 import de.haberland.meitowerdefense.model.Vec2
@@ -42,6 +44,14 @@ class GameRenderer(context: Context) {
     private var terrainBitmap: Bitmap? = null
     private var terrainLevelId: String? = null
     private val terrainPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val towerSprites = mapOf(
+        TowerType.ARCHER to BitmapFactory.decodeResource(resources, R.drawable.tower_archer_atlas),
+        TowerType.CANNON to BitmapFactory.decodeResource(resources, R.drawable.tower_cannon_atlas),
+        TowerType.FIRE to BitmapFactory.decodeResource(resources, R.drawable.tower_fire_atlas),
+        TowerType.ICE to BitmapFactory.decodeResource(resources, R.drawable.tower_ice_atlas)
+    )
+    private val towerSpritePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val towerBadgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(40, 35, 31) }
     private val groundEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(100, 65, 52, 35)
         style = Paint.Style.STROKE
@@ -173,12 +183,36 @@ class GameRenderer(context: Context) {
             canvas.drawCircle(cx, cy, rangePx, rangePaint)
         }
 
-        shapePaint.color = colorForTower(tower.type)
-        canvas.drawRect(cx - half, cy - half, cx + half, cy + half, shapePaint)
-        canvas.drawRect(cx - half, cy - half, cx + half, cy + half, outlinePaint)
+        drawTowerSprite(canvas, tower.type, tower.specialization, cx, cy, camera.cellSizePx, 255)
 
-        towerLevelPaint.textSize = camera.cellSizePx * 0.34f
-        canvas.drawText(tower.level.toString(), cx, cy + towerLevelPaint.textSize * 0.35f, towerLevelPaint)
+        // Level stays readable without hiding the weapon that distinguishes each branch.
+        val badgeX = cx + half
+        val badgeY = cy + half
+        canvas.drawCircle(badgeX, badgeY, camera.cellSizePx * 0.15f, towerBadgePaint)
+        towerLevelPaint.textSize = camera.cellSizePx * 0.23f
+        canvas.drawText(tower.level.toString(), badgeX, badgeY + towerLevelPaint.textSize * 0.35f, towerLevelPaint)
+    }
+
+    private fun drawTowerSprite(
+        canvas: Canvas, type: TowerType, specialization: Specialization?,
+        cx: Float, cy: Float, cellSize: Float, alpha: Int
+    ) {
+        val atlas = towerSprites[type] ?: return
+        val index = when (specialization) {
+            Specialization.ARCHER_SNIPER, Specialization.CANNON_SIEGE,
+            Specialization.FIRE_INFERNO, Specialization.ICE_DEEP_FREEZE -> 1
+            Specialization.ARCHER_RAPID, Specialization.CANNON_MORTAR,
+            Specialization.FIRE_SCORCH, Specialization.ICE_FROSTBITE -> 2
+            null -> 0
+        }
+        val spriteWidth = atlas.width / 3
+        val half = cellSize * 0.48f
+        towerSpritePaint.alpha = alpha
+        canvas.drawBitmap(
+            atlas, Rect(index * spriteWidth, 0, (index + 1) * spriteWidth, atlas.height),
+            RectF(cx - half, cy - half, cx + half, cy + half), towerSpritePaint
+        )
+        towerSpritePaint.alpha = 255
     }
 
     private fun drawEnemy(canvas: Canvas, enemy: Enemy, camera: GameCamera) {
@@ -222,11 +256,8 @@ class GameRenderer(context: Context) {
         val rangePx = preview.range * camera.cellSizePx
         canvas.drawCircle(cx, cy, rangePx, if (preview.valid) rangePaint else rangeInvalidPaint)
 
-        val half = camera.cellSizePx * 0.36f
-        shapePaint.color = colorForTower(preview.type)
-        shapePaint.alpha = if (preview.valid) 160 else 90
-        canvas.drawRect(cx - half, cy - half, cx + half, cy + half, shapePaint)
-        shapePaint.alpha = 255
+        drawTowerSprite(canvas, preview.type, null, cx, cy, camera.cellSizePx,
+            if (preview.valid) 175 else 90)
     }
 
     private fun radiusFractionFor(type: EnemyType): Float = when (type) {
