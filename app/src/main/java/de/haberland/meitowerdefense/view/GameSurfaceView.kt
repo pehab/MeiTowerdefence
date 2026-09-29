@@ -77,7 +77,10 @@ class GameSurfaceView(context: Context, attrs: AttributeSet? = null) :
     private fun onRender(canvas: Canvas) {
         val ctrl = controller ?: return
         val cam = camera ?: return
-        renderer.draw(canvas, ctrl.session, cam, ctrl.selectedTowerId, placementPreview(ctrl, cam))
+        renderer.draw(
+            canvas, ctrl.session, cam, ctrl.selectedTowerId, placementPreview(ctrl, cam),
+            (ctrl.inputMode as? InputMode.Placing)?.type
+        )
     }
 
     private fun placementPreview(ctrl: GameController, cam: GameCamera): PlacementPreview? {
