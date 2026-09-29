@@ -5,6 +5,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,11 +59,14 @@ class GameActivity : ComponentActivity() {
         setContent {
             MeiTowerDefenseTheme {
                 Box(Modifier.fillMaxSize()) {
-                    AndroidView(
-                        factory = { ctx -> GameSurfaceView(ctx).also { it.controller = controller } },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    GameHud(controller = controller, onExit = { finish() })
+                    Row(Modifier.fillMaxSize()) {
+                        GameStatusPanel(controller = controller, onExit = { finish() })
+                        AndroidView(
+                            factory = { ctx -> GameSurfaceView(ctx).also { it.controller = controller } },
+                            modifier = Modifier.weight(1f).fillMaxSize()
+                        )
+                        GameActionsPanel(controller = controller)
+                    }
 
                     val hud by controller.hudState
                     LaunchedEffect(hud.outcome) {
