@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -28,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.imageResource
@@ -45,7 +43,6 @@ import de.haberland.meitowerdefense.R
 import de.haberland.meitowerdefense.model.EnemyType
 import de.haberland.meitowerdefense.model.Specialization
 import de.haberland.meitowerdefense.model.TowerType
-import de.haberland.meitowerdefense.model.TypeColors
 
 private val GlossaryGold = Color(0xFFFFD885)
 private val GlossaryIvory = Color(0xFFFFF1D7)
@@ -125,15 +122,7 @@ private fun GlossaryContent(modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.Bold, fontSize = 20.sp)
         }
         items(EnemyType.entries, key = { "enemy-${it.name}" }) { type ->
-            GlossaryRow(
-                color = Color(TypeColors.enemyColor(type)), shape = CircleShape,
-                name = type.displayName,
-                detail = buildString {
-                    append("HP ${type.baseHp} · Tempo ${"%.1f".format(type.baseSpeed)}")
-                    append(if (type.flying) " · fliegt" else " · Boden")
-                    if (type.livesCost > 1) append(" · kostet ${type.livesCost} Leben")
-                }
-            )
+            EnemyGlossaryRow(type)
         }
     }
 }
@@ -203,17 +192,28 @@ private fun specializationDescription(spec: Specialization): String = when (spec
 }
 
 @Composable
-private fun GlossaryRow(color: Color, shape: Shape, name: String, detail: String) {
+private fun EnemyGlossaryRow(type: EnemyType) {
+    val atlas = ImageBitmap.imageResource(R.drawable.enemy_atlas)
+    val cellWidth = atlas.width / EnemyType.entries.size
+    val painter = remember(atlas, type) {
+        BitmapPainter(atlas, IntOffset(type.ordinal * cellWidth, 0), IntSize(cellWidth, atlas.height))
+    }
     Row(
         Modifier.fillMaxWidth().background(Color(0xB831302B), RoundedCornerShape(6.dp))
             .border(1.dp, Color(0x665F5140), RoundedCornerShape(6.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(22.dp).background(color, shape).border(1.dp, GlossaryIvory.copy(alpha = 0.6f), shape))
+        Image(painter, contentDescription = null, contentScale = ContentScale.Fit,
+            modifier = Modifier.size(if (type == EnemyType.BOSS) 62.dp else 50.dp))
         Column(Modifier.padding(start = 12.dp)) {
-            Text(name, color = GlossaryIvory, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            Text(type.displayName, color = GlossaryIvory, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(buildString {
+                append("HP ${type.baseHp} · Tempo ${"%.1f".format(type.baseSpeed)}")
+                if (type.armor > 0) append(" · Rüstung ${type.armor}")
+                append(if (type.flying) " · fliegt" else " · Boden")
+                if (type.livesCost > 1) append(" · kostet ${type.livesCost} Leben")
+            }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
     }
 }
