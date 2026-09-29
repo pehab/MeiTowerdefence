@@ -3,29 +3,32 @@ package de.haberland.meitowerdefense.render
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.DashPathEffect
+import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Shader
 import de.haberland.meitowerdefense.R
 import de.haberland.meitowerdefense.model.EnemyType
 import de.haberland.meitowerdefense.model.GridPos
 import de.haberland.meitowerdefense.model.MetaProgress
 import de.haberland.meitowerdefense.model.Specialization
 import de.haberland.meitowerdefense.model.TowerType
-import de.haberland.meitowerdefense.model.TypeColors
 import de.haberland.meitowerdefense.model.Vec2
 import de.haberland.meitowerdefense.sim.Enemy
 import de.haberland.meitowerdefense.sim.GameSession
 import de.haberland.meitowerdefense.sim.GameSimulator
 import de.haberland.meitowerdefense.sim.Projectile
 import de.haberland.meitowerdefense.sim.Tower
+import kotlin.math.hypot
 
 /**
- * Draws painted level terrain beneath paths and entities. Routes stay vector overlays sourced
- * from the level definition so the visible paths always match gameplay.
+ * Draws painted terrain and textured routes sourced from the level definition, so the
+ * visible road and flight indicators follow exactly the same waypoints as the simulation.
  */
 class GameRenderer(context: Context) {
     private val resources = context.resources
@@ -56,16 +59,46 @@ class GameRenderer(context: Context) {
     private val enemySpritePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val flyingShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(95, 28, 35, 36) }
     private val towerBadgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(40, 35, 31) }
-    private val groundEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(100, 65, 52, 35)
+    private val dirtTexture = BitmapFactory.decodeResource(resources, R.drawable.dirt_path_texture)
+    private val dirtShader = BitmapShader(dirtTexture, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+    private val dirtMatrix = Matrix()
+    private val projectileAtlas = BitmapFactory.decodeResource(resources, R.drawable.projectile_atlas)
+    private val projectilePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val pathShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(65, 57, 53, 27)
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
-    private val airLanePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(70, 52, 104, 133)
+    private val pathVergePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(150, 135, 125, 62)
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val dirtPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        shader = dirtShader
+    }
+    private val wheelTrackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(42, 85, 69, 43)
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val airFlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(155, 229, 244, 247)
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val airFlowShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(95, 53, 88, 102)
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
     }
     private val buildSitePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(115, 213, 185, 120) }
     private val buildSiteEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -75,18 +108,6 @@ class GameRenderer(context: Context) {
     }
     private val backgroundPaint = Paint().apply { color = Color.rgb(24, 28, 20) }
     private val gridPaint = Paint().apply { color = Color.argb(35, 255, 255, 255); strokeWidth = 1f }
-    private val groundPathPaint = Paint().apply {
-        color = Color.rgb(92, 74, 52)
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
-    }
-    private val airPathPaint = Paint().apply {
-        color = Color.argb(110, 190, 220, 255)
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        pathEffect = DashPathEffect(floatArrayOf(16f, 12f), 0f)
-    }
     private val rangePaint = Paint().apply { color = Color.argb(70, 255, 255, 255); style = Paint.Style.STROKE; strokeWidth = 2f }
     private val rangeInvalidPaint = Paint().apply { color = Color.argb(70, 255, 90, 90); style = Paint.Style.STROKE; strokeWidth = 2f }
     private val hpBarBackPaint = Paint().apply { color = Color.argb(160, 40, 40, 40) }
@@ -112,32 +133,21 @@ class GameRenderer(context: Context) {
             terrainBitmap = terrainResources[terrainId]?.let { BitmapFactory.decodeResource(resources, it) }
             terrainLevelId = terrainId
         }
-        val illustrated = terrainBitmap != null
         terrainBitmap?.let { bitmap ->
             val (left, top) = camera.gridToScreen(Vec2(0f, 0f))
             val (right, bottom) = camera.gridToScreen(Vec2(camera.gridWidth.toFloat(), camera.gridHeight.toFloat()))
             canvas.drawBitmap(bitmap, null, RectF(left, top, right, bottom), terrainPaint)
         }
         drawGrid(canvas, camera)
-        if (illustrated) {
-            drawPolyline(canvas, session.level.groundPath, camera, groundEdgePaint, camera.cellSizePx * 0.72f)
-            groundPathPaint.color = Color.argb(195, 147, 119, 76)
-            drawPolyline(canvas, session.level.airPath, camera, airLanePaint, camera.cellSizePx * 0.5f)
-            airPathPaint.color = Color.argb(205, 176, 221, 249)
-            drawPolyline(canvas, session.level.groundPath, camera, groundPathPaint, camera.cellSizePx * 0.47f)
-            drawPolyline(canvas, session.level.airPath, camera, airPathPaint, camera.cellSizePx * 0.10f)
-        } else {
-            groundPathPaint.color = Color.rgb(92, 74, 52)
-            airPathPaint.color = Color.argb(110, 190, 220, 255)
-            drawPolyline(canvas, session.level.groundPath, camera, groundPathPaint, camera.cellSizePx * 0.55f)
-            drawPolyline(canvas, session.level.airPath, camera, airPathPaint, camera.cellSizePx * 0.35f)
-        }
+        drawGroundRoad(canvas, session.level.groundPath, camera)
+        drawAirRoute(canvas, session.level.airPath, camera)
 
         if (placingType != null && session.gold >= placingType.baseCost) {
             drawBuildSites(canvas, session, camera)
         }
         session.towers.forEach { drawTower(canvas, it, camera, session.meta, selected = it.id == selectedTowerId) }
-        session.projectiles.forEach { drawProjectile(canvas, it, camera) }
+        val enemyPositions = session.enemies.associate { it.id to it.position }
+        session.projectiles.forEach { drawProjectile(canvas, it, enemyPositions[it.targetEnemyId], camera) }
         session.enemies.forEach { drawEnemy(canvas, it, camera) }
 
         placementPreview?.let { drawPlacementPreview(canvas, it, camera) }
@@ -168,12 +178,75 @@ class GameRenderer(context: Context) {
         }
     }
 
-    private fun drawPolyline(canvas: Canvas, points: List<Vec2>, camera: GameCamera, paint: Paint, strokeWidth: Float) {
-        paint.strokeWidth = strokeWidth
-        for (i in 0 until points.size - 1) {
+    private fun drawGroundRoad(canvas: Canvas, points: List<Vec2>, camera: GameCamera) {
+        val path = Path()
+        points.forEachIndexed { index, point ->
+            val (x, y) = camera.gridToScreen(point)
+            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        val cell = camera.cellSizePx
+        pathShadowPaint.strokeWidth = cell * 0.83f
+        pathVergePaint.strokeWidth = cell * 0.76f
+        dirtPaint.strokeWidth = cell * 0.68f
+        dirtMatrix.setScale(cell / dirtTexture.width, cell / dirtTexture.height)
+        dirtShader.setLocalMatrix(dirtMatrix)
+        canvas.drawPath(path, pathShadowPaint)
+        canvas.drawPath(path, pathVergePaint)
+        canvas.drawPath(path, dirtPaint)
+
+        // Paired worn tracks follow each straight section; the rounded road joins keep
+        // corners covered even when the route doubles back through the same cell.
+        wheelTrackPaint.strokeWidth = cell * 0.065f
+        for (i in 0 until points.lastIndex) {
             val (x1, y1) = camera.gridToScreen(points[i])
             val (x2, y2) = camera.gridToScreen(points[i + 1])
-            canvas.drawLine(x1, y1, x2, y2, paint)
+            val length = hypot(x2 - x1, y2 - y1)
+            if (length < 1f) continue
+            val offsetX = -(y2 - y1) / length * cell * 0.18f
+            val offsetY = (x2 - x1) / length * cell * 0.18f
+            val inset = minOf(cell * 0.35f / length, 0.25f)
+            for (side in listOf(-1f, 1f)) {
+                canvas.drawLine(x1 + (x2 - x1) * inset + offsetX * side,
+                    y1 + (y2 - y1) * inset + offsetY * side,
+                    x2 - (x2 - x1) * inset + offsetX * side,
+                    y2 - (y2 - y1) * inset + offsetY * side, wheelTrackPaint)
+            }
+        }
+    }
+
+    private fun drawAirRoute(canvas: Canvas, points: List<Vec2>, camera: GameCamera) {
+        val cell = camera.cellSizePx
+        airFlowShadowPaint.strokeWidth = cell * 0.085f
+        airFlowPaint.strokeWidth = cell * 0.04f
+        // Short wind strokes indicate direction without suggesting a physical road.
+        // Spacing is in grid units, so density does not change with screen size.
+        var distanceToNext = 0.7f
+        for (i in 0 until points.lastIndex) {
+            val a = points[i]
+            val b = points[i + 1]
+            val dx = b.x - a.x
+            val dy = b.y - a.y
+            val length = hypot(dx, dy)
+            if (length == 0f) continue
+            val ux = dx / length
+            val uy = dy / length
+            var along = distanceToNext
+            while (along < length) {
+                val (x, y) = camera.gridToScreen(Vec2(a.x + ux * along, a.y + uy * along))
+                val tipX = x + ux * cell * 0.19f
+                val tipY = y + uy * cell * 0.19f
+                val tailX = x - ux * cell * 0.20f
+                val tailY = y - uy * cell * 0.20f
+                for (paint in listOf(airFlowShadowPaint, airFlowPaint)) {
+                    canvas.drawLine(tailX, tailY, tipX, tipY, paint)
+                    canvas.drawLine(tipX - ux * cell * 0.13f - uy * cell * 0.10f,
+                        tipY - uy * cell * 0.13f + ux * cell * 0.10f, tipX, tipY, paint)
+                    canvas.drawLine(tipX - ux * cell * 0.13f + uy * cell * 0.10f,
+                        tipY - uy * cell * 0.13f - ux * cell * 0.10f, tipX, tipY, paint)
+                }
+                along += 1.25f
+            }
+            distanceToNext = along - length
         }
     }
 
@@ -253,10 +326,29 @@ class GameRenderer(context: Context) {
         canvas.drawRect(barLeft, barTop, barLeft + barWidth * hpFraction, barTop + barHeight, hpBarFrontPaint)
     }
 
-    private fun drawProjectile(canvas: Canvas, projectile: Projectile, camera: GameCamera) {
+    private fun drawProjectile(canvas: Canvas, projectile: Projectile, target: Vec2?, camera: GameCamera) {
         val (x, y) = camera.gridToScreen(projectile.position)
-        shapePaint.color = colorForTower(projectile.sourceTowerType)
-        canvas.drawCircle(x, y, camera.cellSizePx * 0.09f, shapePaint)
+        val index = when (projectile.sourceTowerType) {
+            TowerType.ARCHER -> 0
+            TowerType.CANNON -> 1
+            TowerType.FIRE -> 2
+            TowerType.ICE -> 3
+        }
+        val spriteWidth = projectileAtlas.width / 4
+        val half = camera.cellSizePx * when (projectile.sourceTowerType) {
+            TowerType.CANNON -> 0.19f
+            TowerType.FIRE -> 0.22f
+            TowerType.ARCHER, TowerType.ICE -> 0.25f
+        }
+        val angle = if (target == null) 0f else
+            Math.toDegrees(kotlin.math.atan2((target.y - projectile.position.y).toDouble(),
+                (target.x - projectile.position.x).toDouble())).toFloat()
+        canvas.save()
+        canvas.rotate(angle, x, y)
+        canvas.drawBitmap(projectileAtlas,
+            Rect(index * spriteWidth, 0, (index + 1) * spriteWidth, projectileAtlas.height),
+            RectF(x - half, y - half, x + half, y + half), projectilePaint)
+        canvas.restore()
     }
 
     private fun drawPlacementPreview(canvas: Canvas, preview: PlacementPreview, camera: GameCamera) {
@@ -276,7 +368,6 @@ class GameRenderer(context: Context) {
         EnemyType.BOSS -> 0.62f
     }
 
-    private fun colorForTower(type: TowerType): Int = TypeColors.towerColor(type).toInt()
 }
 
 /** What to draw for a tower the player is about to place, before they confirm the tap. */
