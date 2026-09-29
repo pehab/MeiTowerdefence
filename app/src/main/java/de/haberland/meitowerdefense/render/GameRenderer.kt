@@ -2,6 +2,7 @@ package de.haberland.meitowerdefense.render
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
@@ -21,13 +22,25 @@ import de.haberland.meitowerdefense.sim.Projectile
 import de.haberland.meitowerdefense.sim.Tower
 
 /**
- * Draws level terrain and game entities without changing simulation coordinates. Flussufer
- * has a painted map fitted to the exact camera grid; paths stay vector overlays sourced
- * from the level definition so visual routes always match gameplay. Other levels retain
- * their existing flat background until their terrain art is ready.
+ * Draws painted level terrain beneath paths and entities. Routes stay vector overlays sourced
+ * from the level definition so the visible paths always match gameplay.
  */
 class GameRenderer(context: Context) {
-    private val riverbankBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.riverbank_field)
+    private val resources = context.resources
+    private val terrainResources = mapOf(
+        "forest_path" to R.drawable.forest_field,
+        "mountain_pass" to R.drawable.mountain_field,
+        "valley" to R.drawable.valley_field,
+        "riverbank" to R.drawable.riverbank_field,
+        "serpentines" to R.drawable.serpentine_field,
+        "crossroads" to R.drawable.crossroads_field,
+        "fortress" to R.drawable.fortress_field,
+        "last_wall" to R.drawable.last_wall_field,
+        "endless" to R.drawable.endless_field
+    )
+    // A renderer belongs to one running level; decode only its background, not all nine maps.
+    private var terrainBitmap: Bitmap? = null
+    private var terrainLevelId: String? = null
     private val terrainPaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val groundEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(100, 65, 52, 35)
@@ -81,11 +94,16 @@ class GameRenderer(context: Context) {
         placingType: TowerType?
     ) {
         canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), backgroundPaint)
-        val illustrated = session.level.id == "riverbank"
-        if (illustrated) {
+        val terrainId = session.level.id
+        if (terrainLevelId != terrainId) {
+            terrainBitmap = terrainResources[terrainId]?.let { BitmapFactory.decodeResource(resources, it) }
+            terrainLevelId = terrainId
+        }
+        val illustrated = terrainBitmap != null
+        terrainBitmap?.let { bitmap ->
             val (left, top) = camera.gridToScreen(Vec2(0f, 0f))
             val (right, bottom) = camera.gridToScreen(Vec2(camera.gridWidth.toFloat(), camera.gridHeight.toFloat()))
-            canvas.drawBitmap(riverbankBitmap, null, RectF(left, top, right, bottom), terrainPaint)
+            canvas.drawBitmap(bitmap, null, RectF(left, top, right, bottom), terrainPaint)
         }
         drawGrid(canvas, camera)
         if (illustrated) {
