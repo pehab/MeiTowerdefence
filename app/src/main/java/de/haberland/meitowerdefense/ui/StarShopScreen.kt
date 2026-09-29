@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -105,15 +105,15 @@ private fun UpgradeCard(
         Image(
             painter = artwork,
             contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxWidth().height(96.dp)
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxWidth().aspectRatio(1.25f).background(Color(0xFF171611))
         )
-        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp)) {
             Text(type.displayName, color = ShopIvory, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, fontSize = 19.sp)
             Text(type.description, color = Color(0xFFE2D7C4), fontSize = 13.sp, minLines = 2, lineHeight = 16.sp)
-            Text("Stufe $level/${type.maxLevel}", color = ShopGold, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            Text("Stufe $level/${type.maxLevel}", color = ShopGold, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
