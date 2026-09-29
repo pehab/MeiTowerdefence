@@ -61,7 +61,7 @@ fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () ->
         val compact = maxHeight < 360.dp
         Column(
             modifier = Modifier.align(Alignment.CenterStart)
-                .padding(start = if (compact) 24.dp else 40.dp, end = 16.dp)
+                .padding(start = if (compact) 56.dp else 72.dp, end = 16.dp)
                 .widthIn(max = 370.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally

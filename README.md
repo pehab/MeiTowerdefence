@@ -4,7 +4,7 @@ Android tower-defense game written in Kotlin, with Jetpack Compose menus and a S
 Current version: **0.2.1**, `versionCode 3`; application ID `de.haberland.meitowerdefense`.
 The GitHub repository is named `MeiTowerdefence`.
 
-The main menu has a painted Meißen landscape with Albrechtsburg, Elbe and vineyards. Its labels and buttons are native Compose controls over the illustration. The level selection and gameplay artwork are planned for later updates.
+The main menu and standalone glossary use a painted Meißen landscape with Albrechtsburg, Elbe and vineyards. Labels, buttons and glossary entries remain native Compose controls over the illustration. Both screens reserve extra space along the left edge for landscape display cutouts. The level selection and gameplay artwork are planned for later updates.
 
 ## Architecture
 
