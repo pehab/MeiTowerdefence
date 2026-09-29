@@ -51,6 +51,10 @@ class GameRenderer(context: Context) {
         TowerType.ICE to BitmapFactory.decodeResource(resources, R.drawable.tower_ice_atlas)
     )
     private val towerSpritePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    // Atlas cells follow EnemyType.entries: basic, fast, armored, flying, boss.
+    private val enemyAtlas = BitmapFactory.decodeResource(resources, R.drawable.enemy_atlas)
+    private val enemySpritePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val flyingShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(95, 28, 35, 36) }
     private val towerBadgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(40, 35, 31) }
     private val groundEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(100, 65, 52, 35)
@@ -93,7 +97,6 @@ class GameRenderer(context: Context) {
         isFakeBoldText = true
     }
     private val shapePaint = Paint().apply { isAntiAlias = true }
-    private val outlinePaint = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeWidth = 3f; color = Color.BLACK }
 
     fun draw(
         canvas: Canvas,
@@ -217,12 +220,17 @@ class GameRenderer(context: Context) {
 
     private fun drawEnemy(canvas: Canvas, enemy: Enemy, camera: GameCamera) {
         val (cx, cy) = camera.gridToScreen(enemy.position)
-        val radius = camera.cellSizePx * radiusFractionFor(enemy.type)
-
-        shapePaint.color = colorForEnemy(enemy.type)
-        canvas.drawCircle(cx, cy, radius, shapePaint)
-        outlinePaint.strokeWidth = 2.5f
-        canvas.drawCircle(cx, cy, radius, outlinePaint)
+        val half = camera.cellSizePx * spriteHalfSizeFor(enemy.type)
+        val radius = half * 0.8f
+        if (enemy.type.flying) {
+            canvas.drawOval(cx - half * 0.6f, cy + half * 0.45f,
+                cx + half * 0.6f, cy + half * 0.8f, flyingShadowPaint)
+        }
+        val cellWidth = enemyAtlas.width / EnemyType.entries.size
+        val index = enemy.type.ordinal
+        canvas.drawBitmap(enemyAtlas,
+            Rect(index * cellWidth, 0, (index + 1) * cellWidth, enemyAtlas.height),
+            RectF(cx - half, cy - half, cx + half, cy + half), enemySpritePaint)
 
         if (enemy.frozenRemaining > 0f) {
             shapePaint.color = Color.argb(140, 170, 230, 255)
@@ -236,10 +244,10 @@ class GameRenderer(context: Context) {
             canvas.drawCircle(cx, cy - radius * 1.4f, radius * 0.32f, shapePaint)
         }
 
-        val barWidth = radius * 2.2f
+        val barWidth = half * 1.7f
         val barHeight = camera.cellSizePx * 0.08f
         val barLeft = cx - barWidth / 2f
-        val barTop = cy - radius - barHeight - 4f
+        val barTop = cy - half - barHeight - 4f
         canvas.drawRect(barLeft, barTop, barLeft + barWidth, barTop + barHeight, hpBarBackPaint)
         val hpFraction = (enemy.hp / enemy.maxHp).coerceIn(0f, 1f)
         canvas.drawRect(barLeft, barTop, barLeft + barWidth * hpFraction, barTop + barHeight, hpBarFrontPaint)
@@ -260,15 +268,13 @@ class GameRenderer(context: Context) {
             if (preview.valid) 175 else 90)
     }
 
-    private fun radiusFractionFor(type: EnemyType): Float = when (type) {
-        EnemyType.BASIC -> 0.26f
-        EnemyType.FAST -> 0.20f
-        EnemyType.ARMORED -> 0.32f
-        EnemyType.FLYING -> 0.24f
-        EnemyType.BOSS -> 0.46f
+    private fun spriteHalfSizeFor(type: EnemyType): Float = when (type) {
+        EnemyType.BASIC -> 0.34f
+        EnemyType.FAST -> 0.31f
+        EnemyType.ARMORED -> 0.42f
+        EnemyType.FLYING -> 0.44f
+        EnemyType.BOSS -> 0.62f
     }
-
-    private fun colorForEnemy(type: EnemyType): Int = TypeColors.enemyColor(type).toInt()
 
     private fun colorForTower(type: TowerType): Int = TypeColors.towerColor(type).toInt()
 }
