@@ -1,9 +1,13 @@
 package de.haberland.meitowerdefense.render
 
+import android.content.Context
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
 import android.graphics.Paint
+import android.graphics.RectF
+import de.haberland.meitowerdefense.R
 import de.haberland.meitowerdefense.model.EnemyType
 import de.haberland.meitowerdefense.model.MetaProgress
 import de.haberland.meitowerdefense.model.TowerType
@@ -15,17 +19,25 @@ import de.haberland.meitowerdefense.sim.Projectile
 import de.haberland.meitowerdefense.sim.Tower
 
 /**
- * Draws a [GameSession] with plain Canvas shapes: colored circles per [EnemyType],
- * colored squares per [TowerType], small dots for projectiles. No sprite art (see the
- * project chat for why) - the point of this pass is that every system (targeting,
- * status effects, splash, ground/air separation) is visibly correct on screen, ready to
- * have real art dropped in later without touching any simulation code.
- *
- * Stateless apart from its [Paint] objects (kept as fields purely to avoid reallocating
- * one per shape per frame) - everything it draws comes from the [GameSession] and
- * [GameCamera] passed into [draw].
+ * Draws level terrain and game entities without changing simulation coordinates. Flussufer
+ * has a painted map fitted to the exact camera grid; paths stay vector overlays sourced
+ * from the level definition so visual routes always match gameplay. Other levels retain
+ * their existing flat background until their terrain art is ready.
  */
-class GameRenderer {
+class GameRenderer(context: Context) {
+    private val riverbankBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.riverbank_field)
+    private val terrainPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val groundEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(52, 43, 31)
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val airLanePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(90, 42, 88, 117)
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
     private val backgroundPaint = Paint().apply { color = Color.rgb(24, 28, 20) }
     private val gridPaint = Paint().apply { color = Color.argb(35, 255, 255, 255); strokeWidth = 1f }
     private val groundPathPaint = Paint().apply {
@@ -60,9 +72,26 @@ class GameRenderer {
         placementPreview: PlacementPreview?
     ) {
         canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), backgroundPaint)
+        val illustrated = session.level.id == "riverbank"
+        if (illustrated) {
+            val (left, top) = camera.gridToScreen(Vec2(0f, 0f))
+            val (right, bottom) = camera.gridToScreen(Vec2(camera.gridWidth.toFloat(), camera.gridHeight.toFloat()))
+            canvas.drawBitmap(riverbankBitmap, null, RectF(left, top, right, bottom), terrainPaint)
+        }
         drawGrid(canvas, camera)
-        drawPolyline(canvas, session.level.groundPath, camera, groundPathPaint, camera.cellSizePx * 0.55f)
-        drawPolyline(canvas, session.level.airPath, camera, airPathPaint, camera.cellSizePx * 0.35f)
+        if (illustrated) {
+            drawPolyline(canvas, session.level.groundPath, camera, groundEdgePaint, camera.cellSizePx * 0.72f)
+            groundPathPaint.color = Color.rgb(195, 170, 119)
+            drawPolyline(canvas, session.level.airPath, camera, airLanePaint, camera.cellSizePx * 0.5f)
+            airPathPaint.color = Color.argb(240, 190, 225, 255)
+            drawPolyline(canvas, session.level.groundPath, camera, groundPathPaint, camera.cellSizePx * 0.54f)
+            drawPolyline(canvas, session.level.airPath, camera, airPathPaint, camera.cellSizePx * 0.12f)
+        } else {
+            groundPathPaint.color = Color.rgb(92, 74, 52)
+            airPathPaint.color = Color.argb(110, 190, 220, 255)
+            drawPolyline(canvas, session.level.groundPath, camera, groundPathPaint, camera.cellSizePx * 0.55f)
+            drawPolyline(canvas, session.level.airPath, camera, airPathPaint, camera.cellSizePx * 0.35f)
+        }
 
         session.towers.forEach { drawTower(canvas, it, camera, session.meta, selected = it.id == selectedTowerId) }
         session.projectiles.forEach { drawProjectile(canvas, it, camera) }

@@ -30,7 +30,7 @@ class GameSurfaceView(context: Context, attrs: AttributeSet? = null) :
 
     var controller: GameController? = null
 
-    private val renderer = GameRenderer()
+    private val renderer = GameRenderer(context)
 
     @Volatile
     private var camera: GameCamera? = null
