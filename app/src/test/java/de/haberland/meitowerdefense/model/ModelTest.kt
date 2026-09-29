@@ -1,5 +1,6 @@
 package de.haberland.meitowerdefense.model
 
+import de.haberland.meitowerdefense.sim.Tower
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -47,6 +48,16 @@ class TowerBalanceTest {
 }
 
 class SpecializationTest {
+
+    @Test
+    fun frostbiteProjectilesActuallyBurnAndSlowMoreThanBaseIce() {
+        val base = Tower("base", TowerType.ICE, GridPos(1, 1))
+        val frostbite = base.copy(specialization = Specialization.ICE_FROSTBITE)
+        assertEquals(0f, base.burnDuration, 0.001f)
+        assertEquals(2f, frostbite.burnDps, 0.001f)
+        assertEquals(2f, frostbite.burnDuration, 0.001f)
+        assertEquals(0.6f, frostbite.slowFactor, 0.001f)
+    }
 
     @Test
     fun everyTowerTypeHasExactlyTwoSpecializationBranches() {

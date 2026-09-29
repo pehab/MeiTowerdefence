@@ -54,7 +54,7 @@ enum class Specialization(
     ),
     ICE_FROSTBITE(
         displayName = "Frostbiss", towerType = TowerType.ICE,
-        slowFactorBonus = 0.2f, burnDamageBonus = 2f
+        slowFactorBonus = 0.2f, burnDamageBonus = 2f, burnDurationBonus = 2f
     );
 
     companion object {
