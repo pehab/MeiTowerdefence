@@ -9,12 +9,14 @@ import android.graphics.Paint
 import android.graphics.RectF
 import de.haberland.meitowerdefense.R
 import de.haberland.meitowerdefense.model.EnemyType
+import de.haberland.meitowerdefense.model.GridPos
 import de.haberland.meitowerdefense.model.MetaProgress
 import de.haberland.meitowerdefense.model.TowerType
 import de.haberland.meitowerdefense.model.TypeColors
 import de.haberland.meitowerdefense.model.Vec2
 import de.haberland.meitowerdefense.sim.Enemy
 import de.haberland.meitowerdefense.sim.GameSession
+import de.haberland.meitowerdefense.sim.GameSimulator
 import de.haberland.meitowerdefense.sim.Projectile
 import de.haberland.meitowerdefense.sim.Tower
 
@@ -28,15 +30,21 @@ class GameRenderer(context: Context) {
     private val riverbankBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.riverbank_field)
     private val terrainPaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val groundEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(52, 43, 31)
+        color = Color.argb(100, 65, 52, 35)
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
     private val airLanePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(90, 42, 88, 117)
+        color = Color.argb(70, 52, 104, 133)
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
+    }
+    private val buildSitePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(115, 213, 185, 120) }
+    private val buildSiteEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(205, 65, 54, 34)
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
     }
     private val backgroundPaint = Paint().apply { color = Color.rgb(24, 28, 20) }
     private val gridPaint = Paint().apply { color = Color.argb(35, 255, 255, 255); strokeWidth = 1f }
@@ -69,7 +77,8 @@ class GameRenderer(context: Context) {
         session: GameSession,
         camera: GameCamera,
         selectedTowerId: String?,
-        placementPreview: PlacementPreview?
+        placementPreview: PlacementPreview?,
+        placingType: TowerType?
     ) {
         canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), backgroundPaint)
         val illustrated = session.level.id == "riverbank"
@@ -81,11 +90,11 @@ class GameRenderer(context: Context) {
         drawGrid(canvas, camera)
         if (illustrated) {
             drawPolyline(canvas, session.level.groundPath, camera, groundEdgePaint, camera.cellSizePx * 0.72f)
-            groundPathPaint.color = Color.rgb(195, 170, 119)
+            groundPathPaint.color = Color.argb(195, 147, 119, 76)
             drawPolyline(canvas, session.level.airPath, camera, airLanePaint, camera.cellSizePx * 0.5f)
-            airPathPaint.color = Color.argb(240, 190, 225, 255)
-            drawPolyline(canvas, session.level.groundPath, camera, groundPathPaint, camera.cellSizePx * 0.54f)
-            drawPolyline(canvas, session.level.airPath, camera, airPathPaint, camera.cellSizePx * 0.12f)
+            airPathPaint.color = Color.argb(205, 176, 221, 249)
+            drawPolyline(canvas, session.level.groundPath, camera, groundPathPaint, camera.cellSizePx * 0.47f)
+            drawPolyline(canvas, session.level.airPath, camera, airPathPaint, camera.cellSizePx * 0.10f)
         } else {
             groundPathPaint.color = Color.rgb(92, 74, 52)
             airPathPaint.color = Color.argb(110, 190, 220, 255)
@@ -93,11 +102,26 @@ class GameRenderer(context: Context) {
             drawPolyline(canvas, session.level.airPath, camera, airPathPaint, camera.cellSizePx * 0.35f)
         }
 
+        if (placingType != null && session.gold >= placingType.baseCost) {
+            drawBuildSites(canvas, session, camera)
+        }
         session.towers.forEach { drawTower(canvas, it, camera, session.meta, selected = it.id == selectedTowerId) }
         session.projectiles.forEach { drawProjectile(canvas, it, camera) }
         session.enemies.forEach { drawEnemy(canvas, it, camera) }
 
         placementPreview?.let { drawPlacementPreview(canvas, it, camera) }
+    }
+
+    private fun drawBuildSites(canvas: Canvas, session: GameSession, camera: GameCamera) {
+        val radius = camera.cellSizePx * 0.18f
+        for (row in 0 until session.level.gridHeight) {
+            for (col in 0 until session.level.gridWidth) {
+                if (!GameSimulator.canBuildAt(session, GridPos(col, row))) continue
+                val (x, y) = camera.gridToScreen(Vec2(col + 0.5f, row + 0.5f))
+                canvas.drawCircle(x, y, radius, buildSitePaint)
+                canvas.drawCircle(x, y, radius, buildSiteEdgePaint)
+            }
+        }
     }
 
     private fun drawGrid(canvas: Canvas, camera: GameCamera) {
