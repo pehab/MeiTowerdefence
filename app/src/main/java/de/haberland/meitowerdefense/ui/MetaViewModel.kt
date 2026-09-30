@@ -62,6 +62,7 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
 
     private var storageReady = false
     private var hasUnsavedChanges = false
+    private var resetPending = false
 
     init {
         reload()
@@ -233,6 +234,24 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         }
     }
 
+    /** Called only after the player confirms a complete fresh start in the Info screen. */
+    fun resetAllProgress(): Boolean {
+        meta = MetaProgress()
+        levelProgress = ensureCampaignUnlocks(emptyMap())
+        endlessBestWave = 0
+        endlessBestCompletedWaves = 0
+        endlessStarsEarned = 0
+        killsByEnemy = emptyMap()
+        killsByTower = emptyMap()
+        claimedAchievements = emptySet()
+        achievementStarsEarned = 0
+        accountedRunStats = RunStats()
+        storageReady = true // An explicit reset also allows recovery from an unreadable save.
+        resetPending = true
+        persist()
+        return !hasUnsavedChanges
+    }
+
     fun dismissSaveError() {
         saveError = null
     }
@@ -249,18 +268,18 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         if (!storageReady) return
         hasUnsavedChanges = true
         try {
-            repo.save(
-                SaveData(
-                    stars = meta.stars,
-                    metaUpgradeLevels = meta.upgradeLevels,
-                    levelProgress = levelProgress,
-                    endlessBestWave = endlessBestWave,
-                    endlessBestCompletedWaves = endlessBestCompletedWaves,
-                    killsByEnemy = killsByEnemy,
-                    killsByTower = killsByTower,
-                    claimedAchievements = claimedAchievements
-                )
+            val data = SaveData(
+                stars = meta.stars,
+                metaUpgradeLevels = meta.upgradeLevels,
+                levelProgress = levelProgress,
+                endlessBestWave = endlessBestWave,
+                endlessBestCompletedWaves = endlessBestCompletedWaves,
+                killsByEnemy = killsByEnemy,
+                killsByTower = killsByTower,
+                claimedAchievements = claimedAchievements
             )
+            if (resetPending) repo.reset(data) else repo.save(data)
+            resetPending = false
             hasUnsavedChanges = false
             saveError = null
         } catch (_: Exception) {

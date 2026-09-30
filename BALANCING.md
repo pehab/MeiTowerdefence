@@ -66,14 +66,19 @@ Kanonen gegen Bodengruppen und Eis für mehr Beschusszeit. Startkapital und
 Geschärfte Pfeile helfen besonders beim Festung-Einstieg. Stern-Upgrades können
 kostenlos mit vollständiger Rückerstattung neu verteilt werden.
 
-Ein zusätzlicher Wirtschaftsfehler: Killgold wird derzeit je Gegner mit `toInt()`
-abgerundet. Goldader Stufe 1 (+8 %) erhöht deshalb keine der normalen Belohnungen
-5/6/8/10 Gold; nur Bosse bringen mehr. Stufe 2 lässt einfache und schnelle Gegner
-weiterhin unverändert. Damit lohnt sich das Upgrade deutlich weniger als seine
-Beschreibung erwarten lässt. Als eigener nächster Fix sollten Nachkommarestbeträge
-über Kills gesammelt werden, damit der langfristige Bonus tatsächlich ankommt;
-pauschales Aufrunden würde die kleinen Belohnungen hingegen übermäßig verstärken.
-Bis dahin ist Startkapital die verlässlichere frühe Investition.
+Goldader sammelt seinen Bonus jetzt in exakten Hundertsteln über Abschüsse innerhalb
+einer Partie. Damit bringen auch kleine Belohnungen langfristig tatsächlich +8 %
+pro Stufe; das frühere Abrunden pro Gegner ist behoben. Startkapital hilft sofort beim
+Einstieg, Goldader wächst mit den im Level erzielten Abschüssen.
+
+Zusätzlich sind die Turmrollen geschärft: Eis verteilt Kontrolleffekte und bevorzugt
+ungefrorene Gegner, Feuer bevorzugt nicht brennende Ziele, Kanonen wählen Bodengruppen
+im tatsächlichen Explosionsradius, Bogenschützen bevorzugen Flieger. Bei Gleichstand
+zählt die verbleibende Laufzeit zur Basis bei normaler Geschwindigkeit. Feuer- und
+Eistreffer umgehen Rüstung vollständig; Brandschaden umgeht sie weiterhin. Dadurch
+sind Feuer/Eis auch gegen Panzer effektiver. Kanonen/Feuer treffen mit Bodensplash
+keine Flieger mehr. Die geänderten Regeln müssen im nächsten Balancing-Spieltest
+mit derselben Sternverteilung berücksichtigt werden.
 
 Die Kampagne zahlt maximal 24 Sterne; alle Shop-Upgrades zusammen kosten 177.
 Kumulative Erfolge schaffen mit 42 Meilensteinen und insgesamt 198 möglichen Sternen

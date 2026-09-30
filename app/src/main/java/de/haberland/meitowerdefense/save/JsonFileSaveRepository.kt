@@ -34,6 +34,14 @@ class JsonFileSaveRepository(private val directory: File) : SaveRepository {
         replaceAtomically(file, encoded)
     }
 
+    @Synchronized
+    override fun reset(data: SaveData) {
+        val encoded = json.encodeToString(data)
+        // Replace recovery first: after success no damaged primary can resurrect old progress.
+        replaceAtomically(backup, encoded)
+        replaceAtomically(file, encoded)
+    }
+
     private fun readOrArchive(source: File): SaveData? {
         if (!source.exists()) return null
         val text = source.readText() // I/O failures propagate; they are not evidence of corrupt JSON.

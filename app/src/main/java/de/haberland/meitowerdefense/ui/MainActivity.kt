@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
                         AchievementsScreen(metaViewModel = metaViewModel, onBack = { navController.popBackStack() })
                     }
                     composable("info") {
-                        InfoScreen(onBack = { navController.popBackStack() })
+                        InfoScreen(metaViewModel = metaViewModel, onBack = { navController.popBackStack() })
                     }
                     composable("glossary") {
                         GlossaryScreen(onBack = { navController.popBackStack() })

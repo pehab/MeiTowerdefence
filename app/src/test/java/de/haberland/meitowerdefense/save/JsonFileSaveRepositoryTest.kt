@@ -20,6 +20,37 @@ class JsonFileSaveRepositoryTest {
     private fun backup(dir: File) = File(dir, "savegame.json.bak")
 
     @Test
+    fun resetReplacesBothCopiesAndRecoveryCannotResurrectTheOldProgress() {
+        val dir = temporary.newFolder()
+        val repo = JsonFileSaveRepository(dir)
+        repo.save(SaveData(stars = 30, endlessBestWave = 50,
+            claimedAchievements = setOf("kills:100")))
+        val fresh = SaveData(levelProgress = mapOf("forest_path" to LevelProgress(unlocked = true)))
+        repo.reset(fresh)
+        assertEquals(primary(dir).readText(), backup(dir).readText())
+        primary(dir).writeText("broken after reset")
+        assertEquals(fresh, JsonFileSaveRepository(dir).load())
+    }
+
+    @Test
+    fun failedResetBackupReplacementDoesNotOverwriteThePrimaryAndCanBeRetried() {
+        val dir = temporary.newFolder()
+        val repo = JsonFileSaveRepository(dir)
+        val old = SaveData(stars = 30)
+        repo.save(old)
+        assertTrue(backup(dir).delete())
+        assertTrue(backup(dir).mkdir())
+        val blocker = File(backup(dir), "blocked").apply { writeText("block replacement") }
+        assertThrows(IOException::class.java) { repo.reset(SaveData()) }
+        assertEquals(old, repo.load())
+        assertTrue(blocker.delete())
+        assertTrue(backup(dir).delete())
+        repo.reset(SaveData())
+        assertEquals(SaveData(), repo.load())
+        assertEquals(primary(dir).readText(), backup(dir).readText())
+    }
+
+    @Test
     fun oldJsonLoadsWithEmptyAchievementCountersAndNoInferredCompletedWaves() {
         val dir = temporary.newFolder()
         primary(dir).writeText("""{"stars":7,"endlessBestWave":42}""")

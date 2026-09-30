@@ -12,6 +12,9 @@ Level selection shows eight illustrated campaign cards and an endless-mode card.
 The main menu's Info button shows the installed app version/build number, developer
 Peter Haberland and contact email. Contact opens an email draft with the version in
 the subject; the address can also be copied. The privacy policy is linked there.
+Info also offers a confirmed full progress reset: stars, permanent upgrades, level
+ratings/unlocks, achievements/counters and endless records return to a fresh start.
+Both primary and recovery saves are reset; failed writes keep the reset pending for retry.
 
 All eight campaign levels and the endless map have individual painted backgrounds.
 Textured dirt roads and subtle wind direction markers are drawn from the same waypoints
@@ -59,8 +62,21 @@ specialization and enemy type alongside the artwork.
 4 tower types (Archer, Cannon, Fire, Ice), each with 2 specialization branches -
 `model/TowerType.kt` / `model/Specialization.kt`. 5 enemy types (Basic, Fast, Armored,
 Flying, Boss) - `model/EnemyType.kt`. Archer and Ice can hit flying enemies; Cannon and
-Fire cannot, by design - a level with a flying wave needs the right tower mix, not just
-"more towers". Healers and spawners are explicitly deferred to a later pass.
+Fire cannot, including ground splash damage at crossing routes - a level with a flying wave needs the right tower mix, not just
+"more towers". Fire and Ice direct hits bypass armor; burn damage also bypasses armor.
+Arrows and cannonballs retain enemy armor minus specialization armor penetration.
+Automatic targeting prioritizes reachable flyers for Archers, unfrozen and then
+not-yet-slowed enemies for Ice, unburned enemies for Fire, and the largest ground
+cluster within the actual explosion radius for Cannon. Ice/Fire also account for shots
+in flight to spread effects. If priorities tie, the shortest remaining travel time
+at normal speed wins; towers still fire when no preferred target is available.
+
+Goldader accumulates its +8% kill-gold bonus per upgrade level in exact hundredths
+within a run. Whole gold is paid once enough fractions accumulate, so small rewards
+receive the intended bonus over multiple kills. Kill ordering or same-tick batches do
+not change the total. A new run starts without any leftover gold fraction.
+
+Healers and spawners are explicitly deferred to a later pass.
 
 ## Levels and gameplay
 
@@ -152,7 +168,10 @@ Changes to atlas order must be reflected in `render/GameRenderer.kt` and, where 
 
 ## Release 0.3.0
 
-- Added developer/contact information, installed version and a privacy-policy link.
+- Added developer/contact information, installed version, privacy-policy link and a
+  confirmed full progress reset covering both save copies.
+- Fixed fractional Goldader payouts, added role-specific targeting and made elemental
+  fire/ice damage bypass armor while preserving physical armor penetration.
 
 - Completed terrain artwork for all campaign levels and endless mode.
 - Unified in-game panels and end-of-level statistics with the menu style.

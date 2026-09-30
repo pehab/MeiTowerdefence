@@ -192,19 +192,25 @@ object GameSimulator {
     private fun fireTowers(session: GameSession, dt: Float, random: Random): GameSession {
         val newProjectiles = mutableListOf<Projectile>()
         var nextId = session.nextEntityId
+        val pendingSlow = session.projectiles.filter { it.slowFactor > 0f && it.slowDuration > 0f }
+            .mapTo(mutableSetOf()) { it.targetEnemyId }
+        val pendingBurn = session.projectiles.filter { it.burnDps > 0f && it.burnDuration > 0f }
+            .mapTo(mutableSetOf()) { it.targetEnemyId }
 
         val updatedTowers = session.towers.map { tower ->
             val cooldown = (tower.cooldownRemaining - dt).coerceAtLeast(0f)
             if (cooldown > 0f) return@map tower.copy(cooldownRemaining = cooldown)
 
-            val target = selectTarget(tower, session.enemies)
+            val target = selectTarget(tower, session, pendingSlow, pendingBurn)
             if (target == null) return@map tower.copy(cooldownRemaining = 0f)
 
             newProjectiles += buildProjectile(tower, target.id, session, "p-$nextId")
+            if (tower.slowFactor > 0f) pendingSlow += target.id
+            if (tower.burnDps > 0f) pendingBurn += target.id
             nextId++
 
             if (tower.extraTargetChance > 0f && random.nextFloat() < tower.extraTargetChance) {
-                val second = selectTarget(tower, session.enemies, exclude = target.id)
+                val second = selectTarget(tower, session, pendingSlow, pendingBurn, exclude = target.id)
                 if (second != null) {
                     newProjectiles += buildProjectile(tower, second.id, session, "p-$nextId")
                     nextId++
@@ -237,14 +243,40 @@ object GameSimulator {
         sourceTowerType = tower.type
     )
 
-    /** Targets the furthest-along, in-range enemy this tower is allowed to hit (ground-only towers skip flyers). */
-    private fun selectTarget(tower: Tower, enemies: List<Enemy>, exclude: String? = null): Enemy? =
-        enemies
-            .asSequence()
-            .filter { !it.isDead && it.id != exclude }
-            .filter { tower.type.canHitFlying || !it.type.flying }
-            .filter { tower.position.distanceTo(it.position) <= tower.range }
-            .maxByOrNull { it.distanceTraveled }
+    /** Automatic role priorities; ties prefer the enemy closest to escaping at normal speed. */
+    private fun selectTarget(
+        tower: Tower,
+        session: GameSession,
+        pendingSlow: Set<String>,
+        pendingBurn: Set<String>,
+        exclude: String? = null
+    ): Enemy? {
+        val living = session.enemies.filterNot { it.isDead }
+        val candidates = living.filter {
+            it.id != exclude && (tower.type.canHitFlying || !it.type.flying) &&
+                tower.position.distanceTo(it.position) <= tower.range
+        }
+        fun priority(enemy: Enemy): Int = when (tower.type) {
+            TowerType.ARCHER -> if (enemy.type.flying) 1 else 0
+            TowerType.ICE -> when {
+                enemy.frozenRemaining > 0f -> 0
+                (enemy.slowRemaining > 0f && enemy.slowFactor > 0f) || enemy.id in pendingSlow -> 1
+                else -> 2
+            }
+            TowerType.FIRE -> if ((enemy.burnRemaining > 0f && enemy.burnDps > 0f) || enemy.id in pendingBurn) 0 else 1
+            TowerType.CANNON -> living.count {
+                !it.type.flying && it.position.distanceTo(enemy.position) <= tower.splashRadius(session.meta)
+            }
+        }
+        return candidates.maxWithOrNull(compareBy<Enemy> { priority(it) }.thenByDescending {
+            val path = if (it.type.flying) session.level.airPath else session.level.groundPath
+            val remaining = if (it.pathIndex >= path.size) 0f else {
+                it.position.distanceTo(path[it.pathIndex]) +
+                    (it.pathIndex until path.lastIndex).sumOf { index -> path[index].distanceTo(path[index + 1]).toDouble() }.toFloat()
+            }
+            remaining / it.type.baseSpeed
+        })
+    }
 
     // --- projectile flight & impact ---
 
@@ -266,7 +298,8 @@ object GameSimulator {
                 enemies = enemies.map { e ->
                     if (e.isDead) return@map e
                     val isDirectHit = e.id == target.id
-                    val isSplashHit = !isDirectHit && proj.splashRadius > 0f && e.position.distanceTo(impactPos) <= proj.splashRadius
+                    val isSplashHit = !isDirectHit && (proj.sourceTowerType.canHitFlying || !e.type.flying) &&
+                        proj.splashRadius > 0f && e.position.distanceTo(impactPos) <= proj.splashRadius
                     if (isDirectHit || isSplashHit) applyHit(e, proj, random) else e
                 }
             } else {
@@ -278,7 +311,8 @@ object GameSimulator {
     }
 
     private fun applyHit(enemy: Enemy, proj: Projectile, random: Random): Enemy {
-        val effectiveArmor = (enemy.type.armor - proj.armorPierce).coerceAtLeast(0)
+        val elemental = proj.sourceTowerType == TowerType.FIRE || proj.sourceTowerType == TowerType.ICE
+        val effectiveArmor = if (elemental) 0 else (enemy.type.armor - proj.armorPierce).coerceAtLeast(0)
         val damage = (proj.damage - effectiveArmor).coerceAtLeast(1f)
         var e = enemy.copy(hp = enemy.hp - damage, lastHitTowerType = proj.sourceTowerType)
 
@@ -306,10 +340,13 @@ object GameSimulator {
     private fun removeDeadEnemies(session: GameSession): GameSession {
         val dead = session.enemies.filter { it.isDead }
         if (dead.isEmpty()) return session
-        val goldEarned = dead.sumOf { (it.type.goldReward * session.meta.goldIncomeMultiplier).toInt() }
+        val baseGold = dead.sumOf { it.type.goldReward }
+        val bonusHundredths = session.goldBonusRemainder.toLong() + baseGold.toLong() * session.meta.goldIncomeBonusPercent
+        val goldEarned = baseGold + (bonusHundredths / 100).toInt()
         return session.copy(
             enemies = session.enemies.filterNot { it.isDead },
             gold = session.gold + goldEarned,
+            goldBonusRemainder = (bonusHundredths % 100).toInt(),
             stats = session.stats.copy(
                 enemiesKilled = session.stats.enemiesKilled + dead.size,
                 killsByEnemy = EnemyType.entries.associateWith { type ->

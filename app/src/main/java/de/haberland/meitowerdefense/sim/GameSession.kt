@@ -39,7 +39,9 @@ data class GameSession(
     /** Monotonic counter used to hand out deterministic, unique ids to new towers/enemies/projectiles. */
     val nextEntityId: Int = 0,
     /** Consecutive waves fully spawned and resolved while the base is still alive. */
-    val completedWaves: Int = 0
+    val completedWaves: Int = 0,
+    /** Unpaid Goldader bonus in hundredths of gold, carried between kills within a run. */
+    val goldBonusRemainder: Int = 0
 ) {
     companion object {
         fun start(level: LevelDefinition, meta: MetaProgress): GameSession = GameSession(

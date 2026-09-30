@@ -22,6 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -52,7 +54,7 @@ private val InfoMuted = Color(0xFFE2D7C4)
 private val InfoEdge = Color(0xFFAA8D62)
 
 @Composable
-fun InfoScreen(onBack: () -> Unit) {
+fun InfoScreen(metaViewModel: MetaViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val developer = stringResource(R.string.developer_name)
     val email = stringResource(R.string.contact_email)
@@ -62,6 +64,7 @@ fun InfoScreen(onBack: () -> Unit) {
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
         "${info.versionName ?: "Unbekannt"} (${PackageInfoCompat.getLongVersionCode(info)})"
     }
+    var showResetConfirmation by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<String?>(null) }
 
     Box(Modifier.fillMaxSize()) {
@@ -107,10 +110,35 @@ fun InfoScreen(onBack: () -> Unit) {
                         feedback = if (openInfoIntent(context, Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl)))) null
                         else "Kein Browser verfügbar."
                     }) { Text("Datenschutzerklärung öffnen", color = InfoGold) }
+                    HorizontalDivider(color = InfoEdge)
+                    Text("Neu anfangen", color = InfoIvory, fontFamily = FontFamily.Serif,
+                        fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                    Text("Setzt Sterne, Upgrades, Levelwertungen, Freischaltungen, Erfolge und Endlosrekorde zurück.",
+                        color = InfoMuted, fontSize = 14.sp, lineHeight = 19.sp)
+                    TextButton(onClick = { showResetConfirmation = true }) {
+                        Text("Gesamten Fortschritt zurücksetzen", color = Color(0xFFFFB4AB))
+                    }
                     feedback?.let { Text(it, color = InfoMuted, fontSize = 14.sp) }
                 }
             }
         }
+    }
+    if (showResetConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirmation = false },
+            title = { Text("Gesamten Fortschritt zurücksetzen?") },
+            text = { Text("Alle Sterne, permanenten Upgrades, Levelwertungen, Freischaltungen, Erfolgsfortschritte und Endlosrekorde werden gelöscht. Danach ist nur Waldpfad freigeschaltet. Das lässt sich nicht rückgängig machen.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showResetConfirmation = false
+                    feedback = if (metaViewModel.resetAllProgress()) "Fortschritt zurückgesetzt."
+                    else "Das Zurücksetzen ist noch nicht gespeichert. Bitte erneut versuchen."
+                }) { Text("ALLES ZURÜCKSETZEN", color = Color(0xFFB3261E)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirmation = false }) { Text("ABBRECHEN") }
+            }
+        )
     }
 }
 
