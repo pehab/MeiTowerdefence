@@ -1,44 +1,87 @@
-# Privacy Policy – MeiTowerdefence
+# Privacy Policy – MeiTowerDefense
 
-MeiTowerdefence is an Android tower-defense game.
+MeiTowerDefense is an Android tower-defense game.
 
 ## Data collection and use
-MeiTowerdefence does not use advertising or analytics and does not sell personal data.
+MeiTowerDefense does not use advertising or analytics and does not sell personal data.
+Most game progress and settings are stored locally on the user's device.
 
-Game progress and settings are stored locally on the user's device.
+The application uses Firebase Crashlytics to receive technical crash reports and diagnose
+app errors. Crash reports may contain device and operating-system information, app version
+and state, stack traces, diagnostic identifiers and related technical data. Crashlytics is
+not used for advertising or analytics.
 
-The application is intended to use Firebase Crashlytics to receive technical crash reports and diagnose app errors. Crash reports may contain technical information such as device and operating-system information, app version and state, stack traces, and diagnostic identifiers. Crashlytics is not used for advertising or analytics.
+## Public endless-mode leaderboard
+Publishing an endless-mode record is optional. The app asks before every newly eligible
+personal record is submitted. If the player agrees, the following data is stored in Google
+Cloud Firestore and displayed publicly in the in-app leaderboard:
 
-Google may process technical information required to provide Firebase Crashlytics. For information about Google's handling of data, see Google's privacy policy and Firebase privacy and security documentation.
+- the freely chosen public display name;
+- the number of fully completed endless waves (the score);
+- the server time of the latest published personal record;
+- a Firebase anonymous account identifier used internally to keep one leaderboard row per
+  app identity. The identifier is not shown in the leaderboard.
+
+The app does not upload campaign progress, stars, achievements, email addresses or other
+locally stored game data to the leaderboard. A later, higher published score replaces the
+previous score for the same anonymous account. Choosing not to publish has no effect on the
+locally saved personal record.
+
+Players should not use their real name if they do not want it displayed publicly.
 
 ## Local data
-Game progress and settings remain on the device. They are not synchronized to a MeiTowerdefence server or cloud database.
+Stars, upgrades, level ratings, unlocks, achievement progress, kill counters, endless
+records and the last leaderboard display name remain on the device. They are not
+synchronized to a MeiTowerDefense account or cloud save.
+
+The in-app "Gesamten Fortschritt zurücksetzen" action resets local game data and both local
+recovery copies. It also attempts to delete the leaderboard entry associated with the
+current anonymous Firebase identity. If the device is offline or Firebase cannot be
+reached, the app reports that the online deletion must be retried.
 
 ## Third parties
-MeiTowerdefence does not contain advertising SDKs and does not use Firebase Analytics or other analytics/tracking services.
+MeiTowerDefense uses these Google Firebase services:
 
-The application is intended to use Firebase Crashlytics for crash reporting:
+- Firebase Crashlytics for crash reporting;
+- Firebase Authentication for an anonymous leaderboard identity;
+- Cloud Firestore for published leaderboard entries.
+
+Google may process the technical and leaderboard data required to provide these services.
+See:
 
 - Google Privacy Policy: https://policies.google.com/privacy
 - Firebase Privacy and Security: https://firebase.google.com/support/privacy/
 
 ## Data sharing
-Game progress is not sold or shared with third parties. Technical crash information may be transmitted to Google/Firebase when Crashlytics is active.
+Published leaderboard names and scores are visible to other app users. Technical crash
+information and leaderboard data are processed by Google/Firebase as described above.
+Data is not sold.
 
 ## Data deletion
-Locally stored game data can be removed by clearing the app data or uninstalling the application.
+Local data can be removed with the in-app full reset, by clearing app data, or by
+uninstalling the application. The in-app reset also deletes the published leaderboard
+entry while the anonymous identity is still available. After reinstalling the app or
+clearing its app data, that earlier anonymous identity can no longer be matched locally.
+For deletion or correction of such an entry, contact the developer and include the
+displayed name and score so the entry can be located.
 
 ## Security
-Reasonable technical measures are used to protect data. No method of electronic storage or transmission can guarantee absolute security.
+Firestore security rules restrict leaderboard writes to the player's anonymous Firebase
+identity, accept only the name/score/timestamp schema, and only allow a score to increase.
+No client-only leaderboard can fully prevent scores submitted by a modified app.
+Reasonable technical measures are used to protect data, but no method of electronic storage
+or transmission can guarantee absolute security.
 
 ## Children
-MeiTowerdefence is not specifically directed at children.
+MeiTowerDefense is not specifically directed at children. A public leaderboard name should
+not contain personal contact information.
 
 ## Changes
-This privacy policy may be updated when the application's functionality or services change. The current version is published in this repository.
+This privacy policy may be updated when the application's functionality or services change.
+The current version is published in this repository.
 
 ## Contact
-Questions regarding this privacy policy can be sent to:
+Questions and requests regarding privacy or leaderboard entries can be sent to:
 
 Email: phaberland@googlemail.com  
 GitHub: https://github.com/pehab/MeiTowerdefence

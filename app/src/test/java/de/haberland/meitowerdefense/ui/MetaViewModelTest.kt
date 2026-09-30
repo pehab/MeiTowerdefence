@@ -154,6 +154,17 @@ class MetaViewModelTest {
     }
 
     @Test
+    fun leaderboardNameIsNormalizedPersistedAndDoesNotAffectTheScore() {
+        val repo = FakeSaveRepository(SaveData(endlessBestCompletedWaves = 20))
+        val vm = MetaViewModel(repo)
+        vm.rememberLeaderboardName("  Peter   Haberland  ")
+        assertEquals("Peter Haberland", vm.leaderboardName)
+        assertEquals("Peter Haberland", repo.load().leaderboardName)
+        assertEquals(20, repo.load().endlessBestCompletedWaves)
+        assertEquals("Peter Haberland", MetaViewModel(repo).leaderboardName)
+    }
+
+    @Test
     fun stateSurvivesAReloadFromTheSameUnderlyingSave() {
         val repo = FakeSaveRepository()
         val first = MetaViewModel(repo)

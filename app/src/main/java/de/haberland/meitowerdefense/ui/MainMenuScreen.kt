@@ -44,7 +44,7 @@ private val Ivory = Color(0xFFFFF1D7)
 private val Stone = Color(0xFF28231F)
 
 @Composable
-fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () -> Unit, onAchievements: () -> Unit, onInfo: () -> Unit) {
+fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () -> Unit, onAchievements: () -> Unit, onHighscores: () -> Unit, onInfo: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(R.drawable.meissen_menu),
@@ -103,6 +103,8 @@ fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () ->
             MenuButton("STERNEN-SHOP", prominent = false, compact = compact, onClick = onStarShop)
             Spacer(Modifier.height(if (compact) 7.dp else 12.dp))
             MenuButton("ERFOLGE", prominent = false, compact = compact, onClick = onAchievements)
+            Spacer(Modifier.height(if (compact) 7.dp else 12.dp))
+            MenuButton("HIGHSCORES", prominent = false, compact = compact, onClick = onHighscores)
             Spacer(Modifier.height(if (compact) 7.dp else 12.dp))
             MenuButton("GLOSSAR", prominent = false, compact = compact, onClick = onGlossary)
         }

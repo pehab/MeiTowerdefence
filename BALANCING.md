@@ -1,4 +1,4 @@
-# Balancing-Review 0.3.0
+# Balancing-Review 0.4.0
 
 Stand: 30.09.2026, nach dem Tausch Kreuzung/Serpentinen und der auf vier Sekunden verkürzten Festung-Pause.
 Dies ist eine Beurteilung anhand der tatsächlichen Level-, Turm- und Gegnerdaten,

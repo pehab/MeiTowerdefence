@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
@@ -17,6 +20,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import de.haberland.meitowerdefense.content.LevelCatalog
 import de.haberland.meitowerdefense.model.LevelRating
+import de.haberland.meitowerdefense.leaderboard.FirebaseLeaderboardRepository
+import de.haberland.meitowerdefense.leaderboard.LeaderboardInput
 import de.haberland.meitowerdefense.save.FileSaveRepository
 import de.haberland.meitowerdefense.sim.GameOutcome
 import de.haberland.meitowerdefense.sim.GameSession
@@ -75,10 +80,14 @@ class GameActivity : ComponentActivity() {
         }
 
         metaViewModel = MetaViewModel(FileSaveRepository(applicationContext))
+        val previousEndlessBest = metaViewModel.endlessBestCompletedWaves
+        val leaderboardRepository = FirebaseLeaderboardRepository()
         controller = GameController(GameSession.start(level, metaViewModel.meta))
 
         setContent {
             MeiTowerDefenseTheme {
+                var showHighscoreDialog by remember { mutableStateOf(false) }
+                var highscoreDecisionMade by remember { mutableStateOf(false) }
                 Box(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxSize()) {
                         GameStatusPanel(controller = controller, onExit = ::exitGame)
@@ -123,7 +132,28 @@ class GameActivity : ComponentActivity() {
                             endlessCompletedWaves = if (level.endless) hud.completedWaves else null,
                             endlessStarsEarned = metaViewModel.endlessStarsEarned,
                             achievementStarsEarned = metaViewModel.achievementStarsEarned,
-                            onDone = ::exitGame
+                            onDone = {
+                                val isNewPersonalBest = level.endless && LeaderboardInput.isNewPublishableRecord(previousEndlessBest, hud.completedWaves)
+                                if (isNewPersonalBest && !highscoreDecisionMade) showHighscoreDialog = true else exitGame()
+                            }
+                        )
+                    }
+                    if (showHighscoreDialog) {
+                        HighscoreSubmitDialog(
+                            score = hud.completedWaves,
+                            initialName = metaViewModel.leaderboardName,
+                            repository = leaderboardRepository,
+                            onPosted = { name ->
+                                metaViewModel.rememberLeaderboardName(name)
+                                highscoreDecisionMade = true
+                                showHighscoreDialog = false
+                                exitGame()
+                            },
+                            onSkip = {
+                                highscoreDecisionMade = true
+                                showHighscoreDialog = false
+                                exitGame()
+                            }
                         )
                     }
                     SaveErrorDialog(metaViewModel)

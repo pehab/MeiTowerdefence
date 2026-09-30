@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.pm.PackageInfoCompat
 import de.haberland.meitowerdefense.R
+import de.haberland.meitowerdefense.leaderboard.FirebaseLeaderboardRepository
+import de.haberland.meitowerdefense.leaderboard.LeaderboardRepository
 
 private val InfoGold = Color(0xFFFFD885)
 private val InfoIvory = Color(0xFFFFF1D7)
@@ -54,7 +56,11 @@ private val InfoMuted = Color(0xFFE2D7C4)
 private val InfoEdge = Color(0xFFAA8D62)
 
 @Composable
-fun InfoScreen(metaViewModel: MetaViewModel, onBack: () -> Unit) {
+fun InfoScreen(
+    metaViewModel: MetaViewModel,
+    onBack: () -> Unit,
+    leaderboardRepository: LeaderboardRepository? = null
+) {
     val context = LocalContext.current
     val developer = stringResource(R.string.developer_name)
     val email = stringResource(R.string.contact_email)
@@ -65,7 +71,11 @@ fun InfoScreen(metaViewModel: MetaViewModel, onBack: () -> Unit) {
         "${info.versionName ?: "Unbekannt"} (${PackageInfoCompat.getLongVersionCode(info)})"
     }
     var showResetConfirmation by remember { mutableStateOf(false) }
+    var resetting by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<String?>(null) }
+    val leaderboard = remember(leaderboardRepository) {
+        leaderboardRepository ?: FirebaseLeaderboardRepository()
+    }
 
     Box(Modifier.fillMaxSize()) {
         Image(painterResource(R.drawable.meissen_menu), contentDescription = null,
@@ -113,7 +123,7 @@ fun InfoScreen(metaViewModel: MetaViewModel, onBack: () -> Unit) {
                     HorizontalDivider(color = InfoEdge)
                     Text("Neu anfangen", color = InfoIvory, fontFamily = FontFamily.Serif,
                         fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                    Text("Setzt Sterne, Upgrades, Levelwertungen, Freischaltungen, Erfolge und Endlosrekorde zurück.",
+                    Text("Setzt Sterne, Upgrades, Levelwertungen, Freischaltungen, Erfolge und Endlosrekorde zurück und löscht deinen veröffentlichten Highscore.",
                         color = InfoMuted, fontSize = 14.sp, lineHeight = 19.sp)
                     TextButton(onClick = { showResetConfirmation = true }) {
                         Text("Gesamten Fortschritt zurücksetzen", color = Color(0xFFFFB4AB))
@@ -127,13 +137,25 @@ fun InfoScreen(metaViewModel: MetaViewModel, onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { showResetConfirmation = false },
             title = { Text("Gesamten Fortschritt zurücksetzen?") },
-            text = { Text("Alle Sterne, permanenten Upgrades, Levelwertungen, Freischaltungen, Erfolgsfortschritte und Endlosrekorde werden gelöscht. Danach ist nur Waldpfad freigeschaltet. Das lässt sich nicht rückgängig machen.") },
+            text = { Text("Alle Sterne, permanenten Upgrades, Levelwertungen, Freischaltungen, Erfolgsfortschritte und Endlosrekorde sowie dein veröffentlichter Highscore werden gelöscht. Danach ist nur Waldpfad freigeschaltet. Das lässt sich nicht rückgängig machen.") },
             confirmButton = {
                 TextButton(onClick = {
                     showResetConfirmation = false
-                    feedback = if (metaViewModel.resetAllProgress()) "Fortschritt zurückgesetzt."
-                    else "Das Zurücksetzen ist noch nicht gespeichert. Bitte erneut versuchen."
-                }) { Text("ALLES ZURÜCKSETZEN", color = Color(0xFFB3261E)) }
+                    resetting = true
+                    val localReset = metaViewModel.resetAllProgress()
+                    leaderboard.deleteOwnEntry(
+                        onSuccess = {
+                            resetting = false
+                            feedback = if (localReset) "Fortschritt und veröffentlichter Highscore wurden gelöscht."
+                            else "Der Highscore wurde gelöscht, aber der lokale Fortschritt ist noch nicht gespeichert. Bitte erneut versuchen."
+                        },
+                        onError = {
+                            resetting = false
+                            feedback = if (localReset) "Der lokale Fortschritt wurde zurückgesetzt. Der veröffentlichte Highscore konnte nicht gelöscht werden; bitte erneut versuchen."
+                            else "Das Zurücksetzen konnte nicht vollständig gespeichert werden. Bitte erneut versuchen."
+                        }
+                    )
+                }, enabled = !resetting) { Text("ALLES ZURÜCKSETZEN", color = Color(0xFFB3261E)) }
             },
             dismissButton = {
                 TextButton(onClick = { showResetConfirmation = false }) { Text("ABBRECHEN") }

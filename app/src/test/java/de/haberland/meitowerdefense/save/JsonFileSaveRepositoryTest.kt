@@ -70,7 +70,8 @@ class JsonFileSaveRepositoryTest {
             endlessBestCompletedWaves = 20,
             killsByEnemy = mapOf(EnemyType.ARMORED to 55),
             killsByTower = mapOf(TowerType.CANNON to 55),
-            claimedAchievements = setOf("armored:50"))
+            claimedAchievements = setOf("armored:50"),
+            leaderboardName = "Peter")
         JsonFileSaveRepository(dir).save(data)
         assertEquals(data, JsonFileSaveRepository(dir).load())
         assertEquals(primary(dir).readText(), backup(dir).readText())

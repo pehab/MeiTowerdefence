@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /endless_highscores/{userId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && validScore(request.resource.data);
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && validScore(request.resource.data)
+        && request.resource.data.score > resource.data.score;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+
+  function validScore(data) {
+    return data.keys().hasOnly(['name', 'score', 'updatedAt'])
+      && data.keys().hasAll(['name', 'score', 'updatedAt'])
+      && data.name is string
+      && data.name.size() >= 2
+      && data.name.size() <= 24
+      && data.score is int
+      && data.score >= 1
+      && data.score <= 100000
+      && data.updatedAt == request.time;
+  }
+}

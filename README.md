@@ -1,7 +1,7 @@
 # MeiTowerDefense
 
 Android tower-defense game written in Kotlin, with Jetpack Compose menus and a SurfaceView game canvas.
-Current version: **0.3.0**, `versionCode 4`; application ID `de.haberland.meitowerdefense`.
+Current version: **0.4.0**, `versionCode 5`; application ID `de.haberland.meitowerdefense`.
 The GitHub repository is named `MeiTowerdefence`.
 
 ## Current presentation
@@ -14,7 +14,8 @@ Peter Haberland and contact email. Contact opens an email draft with the version
 the subject; the address can also be copied. The privacy policy is linked there.
 Info also offers a confirmed full progress reset: stars, permanent upgrades, level
 ratings/unlocks, achievements/counters and endless records return to a fresh start.
-Both primary and recovery saves are reset; failed writes keep the reset pending for retry.
+Both primary and recovery saves are reset, and the player's published highscore is deleted;
+failed local writes or online deletion are reported for retry.
 
 All eight campaign levels and the endless map have individual painted backgrounds.
 Textured dirt roads and subtle wind direction markers are drawn from the same waypoints
@@ -115,7 +116,30 @@ the early-wave bonus. Other levels retain their existing automatic wave timing.
 Saved stars stay associated with level IDs, and unlocks are reconciled on load after
 the campaign order changes.
 
-The game includes tower specializations, a star shop, tower sales and permanent-upgrade refunds, speed controls, manual/automatic wave starts and a glossary. A launcher icon is included. Google Play in-app updates and Firebase Crashlytics are configured.
+The game includes tower specializations, a star shop, tower sales and permanent-upgrade refunds, speed controls, manual/automatic wave starts and a glossary. A launcher icon is included. Google Play in-app updates and Firebase Crashlytics, anonymous Authentication and Cloud Firestore highscores are configured.
+
+## Online highscores
+
+A new personal best in endless mode can optionally be published after the result screen.
+The score is the number of fully completed waves; the dialog asks for a public display
+name of 2-24 characters. The saved local record and its star reward do not depend on
+publishing. The main menu shows the top 100 scores ordered from highest to lowest.
+
+Cloud Firestore collection `endless_highscores` stores one document per anonymous Firebase
+user with `name`, `score` and `updatedAt`. A transaction replaces that user's row only when
+the new score is higher. Anonymous Authentication must be enabled in the Firebase console,
+Cloud Firestore must exist, and `firestore.rules` must be deployed before release. The rules
+allow public reads, validate the exact field schema and ownership, allow only increasing
+scores, and let a player delete only their own entry. `firebase.json` and
+`firestore.indexes.json` contain the
+deployment configuration. The leaderboard remains client-reported and therefore cannot
+fully prevent scores from a modified app; Firebase App Check with Play Integrity is the
+next hardening step after the first release.
+
+The privacy policy covers the public name, score, server timestamp and anonymous Firebase
+identity. The full reset also removes the entry belonging to the current anonymous identity.
+After app data is cleared or the app is reinstalled, deletion requests for an older identity
+use the contact address shown in Info.
 
 ## Build and checks
 
@@ -166,10 +190,12 @@ python3 tools/generate_route_assets.py
 Changes to atlas order must be reflected in `render/GameRenderer.kt` and, where used,
 `ui/GlossaryScreen.kt`. Gameplay paths and balance stay in the level/simulation data.
 
-## Release 0.3.0
+## Release 0.4.0
 
+- Added an optional Firebase-backed endless-mode highscore list with public display names,
+  one personal entry per anonymous identity and a top-100 screen in the main menu.
 - Added developer/contact information, installed version, privacy-policy link and a
-  confirmed full progress reset covering both save copies.
+  confirmed full progress reset covering both save copies and the player's online highscore.
 - Fixed fractional Goldader payouts, added role-specific targeting and made elemental
   fire/ice damage bypass armor while preserving physical armor penetration.
 

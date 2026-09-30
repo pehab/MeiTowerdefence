@@ -8,6 +8,7 @@ import de.haberland.meitowerdefense.content.LevelCatalog
 import de.haberland.meitowerdefense.content.AchievementCatalog
 import de.haberland.meitowerdefense.content.AchievementMetric
 import de.haberland.meitowerdefense.content.AchievementTrack
+import de.haberland.meitowerdefense.leaderboard.LeaderboardInput
 import de.haberland.meitowerdefense.model.EnemyType
 import de.haberland.meitowerdefense.model.TowerType
 import de.haberland.meitowerdefense.sim.RunStats
@@ -49,6 +50,8 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         private set
     var claimedAchievements by mutableStateOf<Set<String>>(emptySet())
         private set
+    var leaderboardName by mutableStateOf("")
+        private set
     var achievementStarsEarned by mutableStateOf(0)
         private set
     private var accountedRunStats = RunStats()
@@ -89,6 +92,7 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         killsByEnemy = data.killsByEnemy
         killsByTower = data.killsByTower
         claimedAchievements = data.claimedAchievements
+        leaderboardName = data.leaderboardName
         grantAchievementRewards()
         persist()
     }
@@ -234,6 +238,13 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         }
     }
 
+    fun rememberLeaderboardName(name: String) {
+        val normalized = LeaderboardInput.normalizeName(name)
+        if (!LeaderboardInput.validName(normalized) || normalized == leaderboardName) return
+        leaderboardName = normalized
+        persist()
+    }
+
     /** Called only after the player confirms a complete fresh start in the Info screen. */
     fun resetAllProgress(): Boolean {
         meta = MetaProgress()
@@ -244,6 +255,7 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         killsByEnemy = emptyMap()
         killsByTower = emptyMap()
         claimedAchievements = emptySet()
+        leaderboardName = ""
         achievementStarsEarned = 0
         accountedRunStats = RunStats()
         storageReady = true // An explicit reset also allows recovery from an unreadable save.
@@ -276,7 +288,8 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
                 endlessBestCompletedWaves = endlessBestCompletedWaves,
                 killsByEnemy = killsByEnemy,
                 killsByTower = killsByTower,
-                claimedAchievements = claimedAchievements
+                claimedAchievements = claimedAchievements,
+                leaderboardName = leaderboardName
             )
             if (resetPending) repo.reset(data) else repo.save(data)
             resetPending = false

@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
                             onStarShop = { navController.navigate("shop") },
                             onGlossary = { navController.navigate("glossary") },
                             onAchievements = { navController.navigate("achievements") },
+                            onHighscores = { navController.navigate("highscores") },
                             onInfo = { navController.navigate("info") }
                         )
                     }
@@ -86,6 +87,9 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("achievements") {
                         AchievementsScreen(metaViewModel = metaViewModel, onBack = { navController.popBackStack() })
+                    }
+                    composable("highscores") {
+                        HighscoreScreen(onBack = { navController.popBackStack() })
                     }
                     composable("info") {
                         InfoScreen(metaViewModel = metaViewModel, onBack = { navController.popBackStack() })

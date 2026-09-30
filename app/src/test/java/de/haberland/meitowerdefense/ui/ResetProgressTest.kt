@@ -15,7 +15,8 @@ class ResetProgressTest {
         endlessBestWave = 51, endlessBestCompletedWaves = 50,
         killsByEnemy = mapOf(EnemyType.BASIC to 500),
         killsByTower = mapOf(TowerType.ARCHER to 500),
-        claimedAchievements = setOf("kills:100", "kills:500", "tower_archer:100", "tower_archer:500"))
+        claimedAchievements = setOf("kills:100", "kills:500", "tower_archer:100", "tower_archer:500"),
+        leaderboardName = "Peter")
     private fun fresh() = SaveData(levelProgress = mapOf(LevelCatalog.forestPath.id to LevelProgress(unlocked = true)))
 
     @Test
@@ -33,6 +34,7 @@ class ResetProgressTest {
         assertTrue(reopened.isUnlocked(LevelCatalog.forestPath))
         assertFalse(reopened.isUnlocked(LevelCatalog.mountainPass))
         assertTrue(reopened.claimedAchievements.isEmpty())
+        assertEquals("", reopened.leaderboardName)
         reopened.recordEndlessProgress(10)
         assertEquals(1, reopened.meta.stars) // A deliberate fresh start resets lifetime claims too.
     }

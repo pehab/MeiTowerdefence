@@ -15,7 +15,8 @@ data class SaveData(
     val endlessBestCompletedWaves: Int = 0,
     val killsByEnemy: Map<EnemyType, Int> = emptyMap(),
     val killsByTower: Map<TowerType, Int> = emptyMap(),
-    val claimedAchievements: Set<String> = emptySet()
+    val claimedAchievements: Set<String> = emptySet(),
+    val leaderboardName: String = ""
 )
 
 @Serializable
