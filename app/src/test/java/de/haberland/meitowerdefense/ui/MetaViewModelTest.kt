@@ -27,10 +27,10 @@ class MetaViewModelTest {
     }
 
     @Test
-    fun clearingALevelAwardsStarsEqualToTheRatingAndUnlocksTheNextLevel() {
+    fun clearingALevelAwardsRatingAndCampaignAchievementStarsAndUnlocksTheNextLevel() {
         val vm = MetaViewModel(FakeSaveRepository())
         vm.recordLevelResult(firstLevel, remainingLives = firstLevel.startingLives, won = true) // perfect clear -> 3 stars
-        assertEquals(3, vm.meta.stars)
+        assertEquals(5, vm.meta.stars)
         assertEquals(3, vm.bestStars(firstLevel))
         assertTrue(vm.isUnlocked(secondLevel))
     }
@@ -58,9 +58,9 @@ class MetaViewModelTest {
     fun improvingAPreviousClearAwardsOnlyTheDifference() {
         val vm = MetaViewModel(FakeSaveRepository())
         vm.recordLevelResult(firstLevel, remainingLives = 1, won = true) // 1 star
-        assertEquals(1, vm.meta.stars)
+        assertEquals(2, vm.meta.stars)
         vm.recordLevelResult(firstLevel, remainingLives = firstLevel.startingLives, won = true) // improves to 3 stars
-        assertEquals(3, vm.meta.stars) // 1 (already had) + 2 (the improvement), not 1 + 3
+        assertEquals(5, vm.meta.stars) // Rating improves by 2; the first perfect-clear achievement adds 1.
         assertEquals(3, vm.bestStars(firstLevel))
     }
 
@@ -92,7 +92,7 @@ class MetaViewModelTest {
     }
 
     @Test
-    fun endlessStarsPayAtCompletedMilestonesOnlyOncePerRun() {
+    fun endlessStarsPayAtNewLifetimeMilestonesOnly() {
         val repo = FakeSaveRepository()
         val vm = MetaViewModel(repo)
         vm.recordEndlessResult(10) // Reaching the boss wave alone pays nothing.
@@ -110,8 +110,12 @@ class MetaViewModelTest {
 
         val nextRun = MetaViewModel(repo)
         nextRun.recordEndlessProgress(10)
+        assertEquals(2, nextRun.meta.stars)
+        assertEquals(0, nextRun.endlessStarsEarned)
+        nextRun.recordEndlessProgress(30)
         assertEquals(3, nextRun.meta.stars)
         assertEquals(1, nextRun.endlessStarsEarned)
+        assertEquals(30, repo.load().endlessBestCompletedWaves)
     }
 
     @Test
@@ -182,17 +186,17 @@ class MetaViewModelTest {
         val vm = MetaViewModel(repo)
         repo.failSave = true
         vm.recordLevelResult(firstLevel, firstLevel.startingLives, won = true)
-        assertEquals(3, vm.meta.stars)
+        assertEquals(5, vm.meta.stars)
         assertNotNull(vm.saveError)
         vm.reload()
-        assertEquals(3, vm.meta.stars)
+        assertEquals(5, vm.meta.stars)
         assertEquals(3, vm.bestStars(firstLevel))
         assertFalse(vm.ensureSaved())
 
         repo.failSave = false
         assertTrue(vm.retrySave())
         assertNull(vm.saveError)
-        assertEquals(3, MetaViewModel(repo).meta.stars)
+        assertEquals(5, MetaViewModel(repo).meta.stars)
     }
 
     @Test
@@ -236,7 +240,7 @@ class MetaViewModelTest {
         assertTrue(vm.isUnlocked(LevelCatalog.fortress))
         assertEquals(2, vm.bestStars(LevelCatalog.serpentines))
         assertEquals(0, vm.bestStars(LevelCatalog.crossroads))
-        assertEquals(7, vm.meta.stars)
+        assertEquals(9, vm.meta.stars)
     }
     @Test
     fun anOldSaveWithOnlySerpentinesAvailableAlsoOpensCrossroadsAfterTheSwap() {

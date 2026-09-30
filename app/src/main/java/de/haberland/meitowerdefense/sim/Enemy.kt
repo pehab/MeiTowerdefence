@@ -1,6 +1,7 @@
 package de.haberland.meitowerdefense.sim
 
 import de.haberland.meitowerdefense.model.EnemyType
+import de.haberland.meitowerdefense.model.TowerType
 import de.haberland.meitowerdefense.model.Vec2
 
 /**
@@ -24,7 +25,9 @@ data class Enemy(
     val burnDps: Float = 0f,
     val burnRemaining: Float = 0f,
     /** Zero-based source wave, used to count cleared waves despite overlapping spawns. */
-    val waveIndex: Int = 0
+    val waveIndex: Int = 0,
+    val lastHitTowerType: TowerType? = null,
+    val burnSourceTowerType: TowerType? = null
 ) {
     val isDead: Boolean get() = hp <= 0f
 

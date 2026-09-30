@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,7 +43,7 @@ private val Ivory = Color(0xFFFFF1D7)
 private val Stone = Color(0xFF28231F)
 
 @Composable
-fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () -> Unit) {
+fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () -> Unit, onAchievements: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(R.drawable.meissen_menu),
@@ -58,11 +62,14 @@ fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () ->
                 )
             )
         )
-        val compact = maxHeight < 360.dp
+        val compact = maxHeight < 440.dp
         Column(
             modifier = Modifier.align(Alignment.CenterStart)
                 .padding(start = if (compact) 56.dp else 72.dp, end = 16.dp)
-                .widthIn(max = 370.dp),
+                .widthIn(max = 370.dp)
+                .heightIn(max = maxHeight - 24.dp)
+                .displayCutoutPadding()
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -85,6 +92,8 @@ fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () ->
             MenuButton("SPIELEN", prominent = true, compact = compact, onClick = onPlay)
             Spacer(Modifier.height(if (compact) 7.dp else 12.dp))
             MenuButton("STERNEN-SHOP", prominent = false, compact = compact, onClick = onStarShop)
+            Spacer(Modifier.height(if (compact) 7.dp else 12.dp))
+            MenuButton("ERFOLGE", prominent = false, compact = compact, onClick = onAchievements)
             Spacer(Modifier.height(if (compact) 7.dp else 12.dp))
             MenuButton("GLOSSAR", prominent = false, compact = compact, onClick = onGlossary)
         }

@@ -5,6 +5,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import de.haberland.meitowerdefense.content.LevelCatalog
+import de.haberland.meitowerdefense.content.AchievementCatalog
+import de.haberland.meitowerdefense.content.AchievementMetric
+import de.haberland.meitowerdefense.content.AchievementTrack
+import de.haberland.meitowerdefense.model.EnemyType
+import de.haberland.meitowerdefense.model.TowerType
+import de.haberland.meitowerdefense.sim.RunStats
 import de.haberland.meitowerdefense.model.LevelDefinition
 import de.haberland.meitowerdefense.model.LevelRating
 import de.haberland.meitowerdefense.model.MetaProgress
@@ -35,7 +41,19 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
     var endlessBestWave by mutableStateOf(0)
         private set
 
-    /** Reward checkpoints claimed in this GameActivity's run; separate from the high score. */
+    var endlessBestCompletedWaves by mutableStateOf(0)
+        private set
+    var killsByEnemy by mutableStateOf<Map<EnemyType, Int>>(emptyMap())
+        private set
+    var killsByTower by mutableStateOf<Map<TowerType, Int>>(emptyMap())
+        private set
+    var claimedAchievements by mutableStateOf<Set<String>>(emptySet())
+        private set
+    var achievementStarsEarned by mutableStateOf(0)
+        private set
+    private var accountedRunStats = RunStats()
+
+    /** New record rewards earned in this run, separate from lifetime milestones. */
     var endlessStarsEarned by mutableStateOf(0)
         private set
 
@@ -66,6 +84,11 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         meta = MetaProgress(stars = data.stars, upgradeLevels = data.metaUpgradeLevels)
         levelProgress = ensureCampaignUnlocks(data.levelProgress)
         endlessBestWave = data.endlessBestWave
+        endlessBestCompletedWaves = data.endlessBestCompletedWaves
+        killsByEnemy = data.killsByEnemy
+        killsByTower = data.killsByTower
+        claimedAchievements = data.claimedAchievements
+        grantAchievementRewards()
         persist()
     }
 
@@ -129,18 +152,77 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         if (starsToAward > 0) {
             meta = meta.addStars(starsToAward)
         }
+        grantAchievementRewards()
         persist()
     }
 
-    /** Repeatable per run; observing the same checkpoint or retrying a save never pays twice. */
+    /** One-time lifetime reward for each new ten-wave record, including after relaunch. */
     fun recordEndlessProgress(completedWaves: Int) {
         if (!storageReady) return
-        val earned = completedWaves.coerceAtLeast(0) / 10
-        val additional = earned - endlessStarsEarned
-        if (additional <= 0) return
-        endlessStarsEarned = earned
-        meta = meta.addStars(additional)
+        if (completedWaves <= endlessBestCompletedWaves) return
+        val additional = completedWaves / 10 - endlessBestCompletedWaves / 10
+        endlessBestCompletedWaves = completedWaves
+        if (additional > 0) {
+            endlessStarsEarned += additional
+            meta = meta.addStars(additional)
+        }
         persist()
+    }
+
+    /** Receives cumulative telemetry from one run; only the unrecorded delta is added. */
+    fun recordRunProgress(stats: RunStats) {
+        if (!storageReady) return
+        val enemyDelta = EnemyType.entries.associateWith { type ->
+            ((stats.killsByEnemy[type] ?: 0) - (accountedRunStats.killsByEnemy[type] ?: 0)).coerceAtLeast(0)
+        }
+        val towerDelta = TowerType.entries.associateWith { type ->
+            ((stats.killsByTower[type] ?: 0) - (accountedRunStats.killsByTower[type] ?: 0)).coerceAtLeast(0)
+        }
+        if (enemyDelta.values.all { it == 0 } && towerDelta.values.all { it == 0 }) return
+        killsByEnemy = EnemyType.entries.associateWith { (killsByEnemy[it] ?: 0) + enemyDelta.getValue(it) }
+        killsByTower = TowerType.entries.associateWith { (killsByTower[it] ?: 0) + towerDelta.getValue(it) }
+        accountedRunStats = stats.copy(
+            killsByEnemy = EnemyType.entries.associateWith {
+                maxOf(stats.killsByEnemy[it] ?: 0, accountedRunStats.killsByEnemy[it] ?: 0)
+            },
+            killsByTower = TowerType.entries.associateWith {
+                maxOf(stats.killsByTower[it] ?: 0, accountedRunStats.killsByTower[it] ?: 0)
+            }
+        )
+        grantAchievementRewards()
+        persist()
+    }
+
+    fun achievementValue(track: AchievementTrack): Int = when (track.metric) {
+        AchievementMetric.TOTAL_KILLS -> killsByEnemy.values.sum()
+        AchievementMetric.ENEMY_KILLS -> track.enemyType?.let { killsByEnemy[it] } ?: 0
+        AchievementMetric.TOWER_KILLS -> track.towerType?.let { killsByTower[it] } ?: 0
+        AchievementMetric.CAMPAIGN_CLEARS -> LevelCatalog.all.count { bestStars(it) > 0 }
+        AchievementMetric.CAMPAIGN_PERFECT -> LevelCatalog.all.count { bestStars(it) == 3 }
+    }
+
+    val totalAchievementStars: Int get() = AchievementCatalog.tracks.sumOf { track ->
+        track.thresholds.indices.sumOf { if (track.milestoneId(it) in claimedAchievements) track.rewards[it] else 0 }
+    }
+
+    private fun grantAchievementRewards() {
+        var claimed = claimedAchievements
+        var reward = 0
+        AchievementCatalog.tracks.forEach { track ->
+            val value = achievementValue(track)
+            track.thresholds.forEachIndexed { index, threshold ->
+                val id = track.milestoneId(index)
+                if (value >= threshold && id !in claimed) {
+                    claimed = claimed + id
+                    reward += track.rewards[index]
+                }
+            }
+        }
+        if (reward > 0) {
+            claimedAchievements = claimed
+            achievementStarsEarned += reward
+            meta = meta.addStars(reward)
+        }
     }
 
     fun recordEndlessResult(waveReached: Int) {
@@ -172,7 +254,11 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
                     stars = meta.stars,
                     metaUpgradeLevels = meta.upgradeLevels,
                     levelProgress = levelProgress,
-                    endlessBestWave = endlessBestWave
+                    endlessBestWave = endlessBestWave,
+                    endlessBestCompletedWaves = endlessBestCompletedWaves,
+                    killsByEnemy = killsByEnemy,
+                    killsByTower = killsByTower,
+                    claimedAchievements = claimedAchievements
                 )
             )
             hasUnsavedChanges = false

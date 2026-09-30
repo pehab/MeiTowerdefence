@@ -1,5 +1,7 @@
 package de.haberland.meitowerdefense.save
 
+import de.haberland.meitowerdefense.model.EnemyType
+import de.haberland.meitowerdefense.model.TowerType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -18,10 +20,26 @@ class JsonFileSaveRepositoryTest {
     private fun backup(dir: File) = File(dir, "savegame.json.bak")
 
     @Test
+    fun oldJsonLoadsWithEmptyAchievementCountersAndNoInferredCompletedWaves() {
+        val dir = temporary.newFolder()
+        primary(dir).writeText("""{"stars":7,"endlessBestWave":42}""")
+        val data = JsonFileSaveRepository(dir).load()
+        assertEquals(7, data.stars)
+        assertEquals(42, data.endlessBestWave)
+        assertEquals(0, data.endlessBestCompletedWaves)
+        assertTrue(data.killsByEnemy.isEmpty())
+        assertTrue(data.claimedAchievements.isEmpty())
+    }
+
+    @Test
     fun firstSaveSeedsBothCopiesAndCanBeReadByANewRepository() {
         val dir = temporary.newFolder()
         val data = SaveData(stars = 12, endlessBestWave = 9,
-            levelProgress = mapOf("forest_path" to LevelProgress(true, 3)))
+            levelProgress = mapOf("forest_path" to LevelProgress(true, 3)),
+            endlessBestCompletedWaves = 20,
+            killsByEnemy = mapOf(EnemyType.ARMORED to 55),
+            killsByTower = mapOf(TowerType.CANNON to 55),
+            claimedAchievements = setOf("armored:50"))
         JsonFileSaveRepository(dir).save(data)
         assertEquals(data, JsonFileSaveRepository(dir).load())
         assertEquals(primary(dir).readText(), backup(dir).readText())

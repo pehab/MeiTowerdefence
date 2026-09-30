@@ -76,9 +76,11 @@ pauschales Aufrunden würde die kleinen Belohnungen hingegen übermäßig verst�
 Bis dahin ist Startkapital die verlässlichere frühe Investition.
 
 Die Kampagne zahlt maximal 24 Sterne; alle Shop-Upgrades zusammen kosten 177.
-Endlosbelohnungen schaffen daher eine zusätzliche, wiederholbare Fortschrittsquelle.
-Endlos wird weiterhin erst nach Abschluss aller acht Kampagnenlevel freigeschaltet
-und hilft somit nicht beim ersten Festung-Durchlauf.
+Kumulative Erfolge schaffen mit 42 Meilensteinen und insgesamt 198 möglichen Sternen
+nun eine zusätzliche Fortschrittsquelle bereits während der Kampagne. Endlos wird
+weiterhin erst nach Abschluss aller acht Kampagnenlevel freigeschaltet; Erfolge können
+hingegen schon beim ersten Festung-Durchlauf helfen. Die große Sternmenge erfordert
+langfristig steigende Abschussziele und unterschiedliche Turmtypen.
 
 ## Unendlich
 
@@ -89,9 +91,10 @@ mit festem Turmlimit Stufe 5 wird der Modus irgendwann zwangsläufig schwieriger
 Die vier Sekunden Pause können Wellen überlagern. Aus den Daten lässt sich keine
 verlässliche erreichbare Bestwelle oder faire Grenze ableiten.
 
-Pro Lauf gibt es einen ausgebbaren Stern je zehn vollständig überstandene Wellen.
-Belohnungen werden bei 10, 20, 30 usw. gespeichert und können in einem neuen Lauf
-wieder verdient werden, unabhängig vom Bestwert. Gestartete oder vollständig
+Für jeden neuen Rekord von zehn vollständig überstandenen Wellen gibt es einmalig
+einen ausgebbaren Stern. Belohnungen werden bei 10, 20, 30 usw. gespeichert; bereits
+belohnte Meilensteine geben auch in neuen Läufen keine weiteren Rekordsterne.
+Abschüsse in weiteren Läufen treiben stattdessen die kumulativen Erfolgsreihen voran. Gestartete oder vollständig
 erschienene Gegner genügen nicht: Alle Gegner dieser und früherer Wellen müssen
 besiegt oder durchgelaufen sein, während die Basis überlebt. Die tödliche Welle
 zählt nicht. Bestehende Bestwerte werden nicht rückwirkend belohnt.

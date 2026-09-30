@@ -102,7 +102,8 @@ fun LevelSelectScreen(
                         }
                         Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)) {
                             Text("Unendlich", color = LevelIvory, fontFamily = FontFamily.Serif, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            Text("★ 1 je 10 überstandene Wellen", color = LevelGold, fontSize = 12.sp)
+                            Text("★ 1 je 10 neue Rekordwellen", color = LevelGold, fontSize = 12.sp)
+                            Text("Überstanden: ${metaViewModel.endlessBestCompletedWaves}", color = LevelGold, fontSize = 12.sp)
                             Text(
                                 if (allBeaten) "Beste Welle: ${metaViewModel.endlessBestWave}" else "Schließe alle Level ab",
                                 color = if (allBeaten) LevelGold else Color(0xFFC7B9A2),

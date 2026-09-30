@@ -3,6 +3,7 @@ package de.haberland.meitowerdefense.ui
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -29,10 +30,30 @@ import de.haberland.meitowerdefense.view.GameSurfaceView
  *
  * Declared with android:configChanges="orientation|screenSize|keyboardHidden" in the
  * manifest, so this Activity is never destroyed/recreated on rotation - [controller] and
- * [metaViewModel] just live as plain local vals in [onCreate], no ViewModel or
+ * [metaViewModel] live for this Activity, no retained ViewModel or
  * SavedStateHandle needed to survive a config change that can't happen here.
  */
 class GameActivity : ComponentActivity() {
+    private lateinit var metaViewModel: MetaViewModel
+    private lateinit var controller: GameController
+
+    private fun recordRunProgress() {
+        if (!::controller.isInitialized) return
+        val session = controller.session
+        metaViewModel.recordRunProgress(session.stats)
+        if (session.level.endless) metaViewModel.recordEndlessProgress(session.completedWaves)
+    }
+
+    private fun exitGame() {
+        recordRunProgress()
+        if (metaViewModel.ensureSaved()) finish()
+    }
+
+    override fun onStop() {
+        recordRunProgress()
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -53,17 +74,14 @@ class GameActivity : ComponentActivity() {
             return
         }
 
-        val metaViewModel = MetaViewModel(FileSaveRepository(applicationContext))
-        val controller = GameController(GameSession.start(level, metaViewModel.meta))
+        metaViewModel = MetaViewModel(FileSaveRepository(applicationContext))
+        controller = GameController(GameSession.start(level, metaViewModel.meta))
 
         setContent {
             MeiTowerDefenseTheme {
                 Box(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxSize()) {
-                        GameStatusPanel(controller = controller, onExit = {
-                            if (level.endless) metaViewModel.recordEndlessProgress(controller.session.completedWaves)
-                            if (metaViewModel.ensureSaved()) finish()
-                        })
+                        GameStatusPanel(controller = controller, onExit = ::exitGame)
                         AndroidView(
                             factory = { ctx -> GameSurfaceView(ctx).also { it.controller = controller } },
                             modifier = Modifier.weight(1f).fillMaxSize()
@@ -72,13 +90,12 @@ class GameActivity : ComponentActivity() {
                     }
 
                     val hud by controller.hudState
-                    LaunchedEffect(hud.completedWaves) {
-                        if (level.endless) metaViewModel.recordEndlessProgress(hud.completedWaves)
-                    }
+                    BackHandler { exitGame() }
+                    LaunchedEffect(hud.completedWaves) { recordRunProgress() }
                     LaunchedEffect(hud.outcome) {
                         if (hud.outcome != GameOutcome.IN_PROGRESS) {
+                            recordRunProgress()
                             if (level.endless) {
-                                metaViewModel.recordEndlessProgress(hud.completedWaves)
                                 metaViewModel.recordEndlessResult(endlessWaveReached(controller.session))
                             } else {
                                 metaViewModel.recordLevelResult(
@@ -105,7 +122,8 @@ class GameActivity : ComponentActivity() {
                             endlessBestWave = if (level.endless) maxOf(metaViewModel.endlessBestWave, endlessWave ?: 0) else null,
                             endlessCompletedWaves = if (level.endless) hud.completedWaves else null,
                             endlessStarsEarned = metaViewModel.endlessStarsEarned,
-                            onDone = { if (metaViewModel.ensureSaved()) finish() }
+                            achievementStarsEarned = metaViewModel.achievementStarsEarned,
+                            onDone = ::exitGame
                         )
                     }
                     SaveErrorDialog(metaViewModel)

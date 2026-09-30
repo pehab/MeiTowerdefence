@@ -1,6 +1,7 @@
 package de.haberland.meitowerdefense.sim
 
 import de.haberland.meitowerdefense.content.EndlessWaves
+import de.haberland.meitowerdefense.model.EnemyType
 import de.haberland.meitowerdefense.model.GridPos
 import de.haberland.meitowerdefense.model.LevelDefinition
 import de.haberland.meitowerdefense.model.Specialization
@@ -150,6 +151,7 @@ object GameSimulator {
 
             var e = enemy.copy(
                 hp = enemy.hp - burnDamage,
+                lastHitTowerType = if (burnDamage > 0f && enemy.hp <= burnDamage) enemy.burnSourceTowerType else enemy.lastHitTowerType,
                 slowFactor = if (slowRemaining > 0f) enemy.slowFactor else 0f,
                 slowRemaining = slowRemaining,
                 frozenRemaining = frozenRemaining,
@@ -278,7 +280,7 @@ object GameSimulator {
     private fun applyHit(enemy: Enemy, proj: Projectile, random: Random): Enemy {
         val effectiveArmor = (enemy.type.armor - proj.armorPierce).coerceAtLeast(0)
         val damage = (proj.damage - effectiveArmor).coerceAtLeast(1f)
-        var e = enemy.copy(hp = enemy.hp - damage)
+        var e = enemy.copy(hp = enemy.hp - damage, lastHitTowerType = proj.sourceTowerType)
 
         if (proj.slowFactor > 0f && proj.slowDuration > 0f) {
             if (proj.slowFactor >= e.slowFactor || proj.slowDuration >= e.slowRemaining) {
@@ -294,6 +296,7 @@ object GameSimulator {
         if (proj.burnDps > 0f && proj.burnDuration > 0f) {
             e = e.copy(
                 burnDps = maxOf(proj.burnDps, e.burnDps),
+                burnSourceTowerType = if (proj.burnDps >= e.burnDps) proj.sourceTowerType else e.burnSourceTowerType,
                 burnRemaining = maxOf(proj.burnDuration, e.burnRemaining)
             )
         }
@@ -309,6 +312,12 @@ object GameSimulator {
             gold = session.gold + goldEarned,
             stats = session.stats.copy(
                 enemiesKilled = session.stats.enemiesKilled + dead.size,
+                killsByEnemy = EnemyType.entries.associateWith { type ->
+                    (session.stats.killsByEnemy[type] ?: 0) + dead.count { it.type == type }
+                },
+                killsByTower = TowerType.entries.associateWith { type ->
+                    (session.stats.killsByTower[type] ?: 0) + dead.count { it.lastHitTowerType == type }
+                },
                 goldEarned = session.stats.goldEarned + goldEarned
             )
         )
