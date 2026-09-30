@@ -7,13 +7,17 @@ import de.haberland.meitowerdefense.model.WaveGroup
 /**
  * Deterministic endless-wave generator. The same wave number always produces the same
  * composition, which keeps runs comparable and makes the high score meaningful.
+ *
+ * Enemy health grows slightly faster than linear in the opening waves and increasingly
+ * faster later on. This keeps the mode approachable at first while preventing fully
+ * upgraded defenses from coasting through the high double-digit waves.
  */
 object EndlessWaves {
 
     fun wave(index: Int): WaveEntry {
         require(index >= 0) { "index must be >= 0" }
         val number = index + 1
-        val hp = 1f + index * 0.11f
+        val hp = hpMultiplier(index)
         val count = 6 + (index * 0.7f).toInt()
 
         if (number % 10 == 0) {
@@ -23,7 +27,7 @@ object EndlessWaves {
                         enemyType = EnemyType.BOSS,
                         count = 1 + index / 30,
                         spawnIntervalSeconds = 3f,
-                        hpMultiplier = 1f + index * 0.08f
+                        hpMultiplier = hp * 1.1f
                     ),
                     WaveGroup(
                         enemyType = EnemyType.FAST,
@@ -62,7 +66,7 @@ object EndlessWaves {
                 enemyType = EnemyType.FLYING,
                 count = 3 + index / 4,
                 spawnIntervalSeconds = 0.7f.coerceAtLeast(0.35f),
-                hpMultiplier = 0.9f + index * 0.09f,
+                hpMultiplier = hp * 0.9f,
                 startDelaySeconds = 2f
             )
         }
@@ -78,5 +82,10 @@ object EndlessWaves {
         }
 
         return WaveEntry(groups)
+    }
+
+    internal fun hpMultiplier(index: Int): Float {
+        require(index >= 0) { "index must be >= 0" }
+        return 1f + index * 0.115f + index * index * 0.0015f
     }
 }
