@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
@@ -86,7 +87,8 @@ fun GameStatusPanel(controller: GameController, onExit: () -> Unit) {
     var showExitConfirm by remember { mutableStateOf(false) }
     var showGlossary by remember { mutableStateOf(false) }
     val density = LocalDensity.current
-    val cutoutLeft = with(density) { WindowInsets.displayCutout.getLeft(density).toDp() }
+    val layoutDirection = LocalLayoutDirection.current
+    val cutoutLeft = with(density) { WindowInsets.displayCutout.getLeft(density, layoutDirection).toDp() }
     val width = (LocalConfiguration.current.screenWidthDp * 0.17f).coerceIn(164f, 184f).dp + cutoutLeft
 
     Column(
