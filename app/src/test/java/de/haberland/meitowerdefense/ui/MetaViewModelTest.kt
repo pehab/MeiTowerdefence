@@ -251,6 +251,6 @@ class MetaViewModelTest {
         assertTrue(vm.isUnlocked(LevelCatalog.crossroads))
         assertTrue(vm.isUnlocked(LevelCatalog.serpentines))
         assertFalse(vm.isUnlocked(LevelCatalog.fortress))
-        assertEquals(0, vm.meta.stars)
+        assertEquals(1, vm.meta.stars) // Existing clear grants the first campaign achievement.
     }
 }
