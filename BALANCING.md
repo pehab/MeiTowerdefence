@@ -1,6 +1,6 @@
 # Balancing-Review 0.3.0
 
-Stand: 30.09.2026, nach dem Tausch Kreuzung/Serpentinen und der neuen Festung-Pause.
+Stand: 30.09.2026, nach dem Tausch Kreuzung/Serpentinen und der auf vier Sekunden verkürzten Festung-Pause.
 Dies ist eine Beurteilung anhand der tatsächlichen Level-, Turm- und Gegnerdaten,
 keine Aussage über gemessene Gewinnquoten. Platzierung, Upgrades, Sternverteilung,
 Verlangsamung und manuelle Frühstarts können das Ergebnis stark verändern.
@@ -46,7 +46,7 @@ es enthält weder Goldader noch Frühstartboni. Gesamt-HP allein misst keine Sch
 - **Letzter Wall:** Abstände bleiben vier Sekunden nach dem letzten Spawn; anders
   als Festung wartet dieses Level nicht auf das freie Feld. Das ist nun ein
   zusätzlicher Regel- und Schwierigkeitssprung. Falls derselbe Überroll-Effekt
-  auftritt, zuerst die Festung-Warteregel übernehmen und die sechs Sekunden
+  auftritt, zuerst die Festung-Warteregel übernehmen und die vier Sekunden
   Baupause testen, bevor HP oder Gegnerzahl reduziert werden.
 
 ## Turmmix und Sterne

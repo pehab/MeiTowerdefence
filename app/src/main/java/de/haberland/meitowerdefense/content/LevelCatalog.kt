@@ -237,7 +237,7 @@ object LevelCatalog {
         ),
         startingGold = 190,
         startingLives = 18,
-        timeBetweenWaves = 6f,
+        timeBetweenWaves = 4f,
         waitForClearBeforeAutoStart = true
     )
 

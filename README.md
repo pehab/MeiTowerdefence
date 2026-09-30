@@ -109,7 +109,7 @@ IDs and rewards live in `content/AchievementCatalog.kt`.
 
 See [BALANCING.md](BALANCING.md) for the current data-based balance review.
 
-In Festung, automatic follow-up waves wait for the field to clear and then allow six
+In Festung, automatic follow-up waves wait for the field to clear and then allow four
 seconds of preparation. Manually calling the next wave remains available, including
 the early-wave bonus. Other levels retain their existing automatic wave timing.
 Saved stars stay associated with level IDs, and unlocks are reconciled on load after
@@ -179,7 +179,7 @@ Changes to atlas order must be reflected in `render/GameRenderer.kt` and, where 
 - Replaced plain routes with textured dirt roads and wind direction markers.
 - Fixed endless HUD wave progression and restricted early-wave bonus indicators to an
   available, pending wave.
-- Reordered Kreuzung before Serpentinen and added a six-second pause after clearing each
+- Reordered Kreuzung before Serpentinen and added a four-second pause after clearing each
   Festung wave, while retaining optional early calls.
 - Added one-time endless record stars and 42 cumulative achievement milestones, with
   progress and earned rewards visible from the main menu.

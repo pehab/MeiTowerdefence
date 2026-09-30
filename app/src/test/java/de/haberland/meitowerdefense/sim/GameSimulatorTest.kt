@@ -571,14 +571,14 @@ class GameSimulatorTest {
         repeat(100) { session = GameSimulator.step(session, 0.1f) }
         assertEquals(1, session.waveIndex)
         assertEquals(1, session.nextEntityId)
-        assertEquals(6f, session.timeUntilAutoStart, 0.001f)
+        assertEquals(4f, session.timeUntilAutoStart, 0.001f)
         assertTrue(session.waitingForWaveStart)
     }
 
     @Test
-    fun fortressAllowsSixSecondsAfterClearingBeforeAutomaticSpawnsResume() {
+    fun fortressAllowsFourSecondsAfterClearingBeforeAutomaticSpawnsResume() {
         val session = fortressWaitingWithEnemy().copy(enemies = emptyList())
-        val before = GameSimulator.step(session, 5.9f)
+        val before = GameSimulator.step(session, 3.9f)
         assertTrue(before.waitingForWaveStart)
         assertTrue(before.enemies.isEmpty())
         assertEquals(session.gold, before.gold)

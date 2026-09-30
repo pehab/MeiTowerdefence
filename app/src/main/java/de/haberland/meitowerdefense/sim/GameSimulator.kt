@@ -311,6 +311,8 @@ object GameSimulator {
     }
 
     private fun applyHit(enemy: Enemy, proj: Projectile, random: Random): Enemy {
+        // Enforce the ground-only rule at damage/status application as well as targeting and splash selection.
+        if (enemy.type.flying && !proj.sourceTowerType.canHitFlying) return enemy
         val elemental = proj.sourceTowerType == TowerType.FIRE || proj.sourceTowerType == TowerType.ICE
         val effectiveArmor = if (elemental) 0 else (enemy.type.armor - proj.armorPierce).coerceAtLeast(0)
         val damage = (proj.damage - effectiveArmor).coerceAtLeast(1f)
