@@ -71,7 +71,7 @@ fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () ->
         ) {
             Text("Info", color = Gold, fontFamily = FontFamily.Serif, fontSize = 17.sp)
         }
-        val compact = maxHeight < 440.dp
+        val compact = maxHeight < 500.dp
         Column(
             modifier = Modifier.align(Alignment.CenterStart)
                 .padding(start = if (compact) 56.dp else 72.dp, end = 16.dp)
@@ -97,15 +97,15 @@ fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () ->
                 maxLines = 1,
                 style = TextStyle(shadow = Shadow(Color.Black, blurRadius = 8f))
             )
-            Spacer(Modifier.height(if (compact) 12.dp else 28.dp))
+            Spacer(Modifier.height(if (compact) 8.dp else 20.dp))
             MenuButton("SPIELEN", prominent = true, compact = compact, onClick = onPlay)
-            Spacer(Modifier.height(if (compact) 7.dp else 12.dp))
+            Spacer(Modifier.height(if (compact) 5.dp else 8.dp))
             MenuButton("STERNEN-SHOP", prominent = false, compact = compact, onClick = onStarShop)
-            Spacer(Modifier.height(if (compact) 7.dp else 12.dp))
+            Spacer(Modifier.height(if (compact) 5.dp else 8.dp))
             MenuButton("ERFOLGE", prominent = false, compact = compact, onClick = onAchievements)
-            Spacer(Modifier.height(if (compact) 7.dp else 12.dp))
+            Spacer(Modifier.height(if (compact) 5.dp else 8.dp))
             MenuButton("HIGHSCORES", prominent = false, compact = compact, onClick = onHighscores)
-            Spacer(Modifier.height(if (compact) 7.dp else 12.dp))
+            Spacer(Modifier.height(if (compact) 5.dp else 8.dp))
             MenuButton("GLOSSAR", prominent = false, compact = compact, onClick = onGlossary)
         }
     }
@@ -116,7 +116,7 @@ private fun MenuButton(label: String, prominent: Boolean, compact: Boolean, onCl
     val shape = RoundedCornerShape(6.dp)
     Box(
         modifier = Modifier.fillMaxWidth()
-            .height(if (compact) 48.dp else 56.dp)
+            .height(if (compact) 46.dp else 52.dp)
             .shadow(5.dp, shape)
             .background(
                 if (prominent) Brush.verticalGradient(listOf(Color(0xFFFFE5A4), Color(0xFFB9812E)))
