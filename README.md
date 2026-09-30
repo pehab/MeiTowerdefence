@@ -1,10 +1,33 @@
 # MeiTowerDefense
 
 Android tower-defense game written in Kotlin, with Jetpack Compose menus and a SurfaceView game canvas.
-Current version: **0.2.1**, `versionCode 3`; application ID `de.haberland.meitowerdefense`.
+Current version: **0.4.0**, `versionCode 5`; application ID `de.haberland.meitowerdefense`.
 The GitHub repository is named `MeiTowerdefence`.
 
-The main menu, standalone glossary and star shop use a painted Meißen landscape with Albrechtsburg, Elbe and vineyards. Labels, buttons and glossary entries remain native Compose controls over the illustration. All three screens reserve extra space along the left edge for landscape display cutouts. The shop presents each of the six permanent upgrades as a painted card; prices and progress remain live controls. Level selection shows eight illustrated Meißen-inspired landscape cards with progress and unlock states, plus an endless-mode card. Flussufer is the first illustrated playable level: its painted terrain is fitted to the camera grid while ground and flight paths are rendered from the same level data used by the simulation. While placing a tower, valid build cells are highlighted using the same placement rule as the simulation. Ground and flight paths on Flussufer use subdued colors to blend with the terrain. Other gameplay backgrounds and sprites remain for later updates.
+## Current presentation
+
+The main menu, achievements, glossary and star shop use a painted Meißen landscape with Albrechtsburg,
+Elbe and vineyards. Native Compose controls keep text, prices and progress readable.
+Level selection shows eight illustrated campaign cards and an endless-mode card.
+The main menu's Info button shows the installed app version/build number, developer
+Peter Haberland and contact email. Contact opens an email draft with the version in
+the subject; the address can also be copied. The privacy policy is linked there.
+Info also offers a confirmed full progress reset: stars, permanent upgrades, level
+ratings/unlocks, achievements/counters and endless records return to a fresh start.
+Both primary and recovery saves are reset, and the player's published highscore is deleted;
+failed local writes or online deletion are reported for retry.
+
+All eight campaign levels and the endless map have individual painted backgrounds.
+Textured dirt roads and subtle wind direction markers are drawn from the same waypoints
+used by the simulation. During tower placement, available build cells are highlighted
+using the actual placement rules.
+
+Each tower has a base sprite and distinct artwork for its two specialization branches.
+Five enemy sprites are shared by gameplay and the glossary; health and status indicators
+remain visible. Arrows, cannonballs, fire and ice projectiles have their own transparent
+sprites, oriented toward their targets. The in-game panels and end-of-level statistics
+use the same dark, gold-accented style as the menus. The glossary explains each tower,
+specialization and enemy type alongside the artwork.
 
 ## Architecture
 
@@ -26,10 +49,10 @@ The main menu, standalone glossary and star shop use a painted Meißen landscape
 ## The two currencies
 
 - **In-level gold**: earned from kills, spent building and upgrading towers within one
-  level's playthrough. Towers level 1→5; reaching level 3 requires picking one of two
+  level's playthrough. Towers level 1→5; upgrading from level 3 to 4 requires picking one of two
   specialization branches (`model/Specialization.kt`), continuing to level 5 within that
   branch. Resets every level.
-- **Stars**: earned from a level's 0-3 star rating (`model/LevelRating.kt` - based on
+- **Stars**: earned from achievements, new endless records and a level's 0-3 star rating (`model/LevelRating.kt` - based on
   lives remaining at the end), spent in the star shop on permanent, account-wide
   upgrades (`model/MetaUpgradeType.kt`): more gold income, more starting gold/lives per
   level, and per-tower-type passive bonuses (e.g. Fire towers' splash radius, Ice towers'
@@ -40,14 +63,83 @@ The main menu, standalone glossary and star shop use a painted Meißen landscape
 4 tower types (Archer, Cannon, Fire, Ice), each with 2 specialization branches -
 `model/TowerType.kt` / `model/Specialization.kt`. 5 enemy types (Basic, Fast, Armored,
 Flying, Boss) - `model/EnemyType.kt`. Archer and Ice can hit flying enemies; Cannon and
-Fire cannot, by design - a level with a flying wave needs the right tower mix, not just
-"more towers". Healers and spawners are explicitly deferred to a later pass.
+Fire cannot, including ground splash damage at crossing routes - a level with a flying wave needs the right tower mix, not just
+"more towers". Fire and Ice direct hits bypass armor; burn damage also bypasses armor.
+Arrows and cannonballs retain enemy armor minus specialization armor penetration.
+Automatic targeting prioritizes reachable flyers for Archers, unfrozen and then
+not-yet-slowed enemies for Ice, unburned enemies for Fire, and the largest ground
+cluster within the actual explosion radius for Cannon. Ice/Fire also account for shots
+in flight to spread effects. If priorities tie, the shortest remaining travel time
+at normal speed wins; towers still fire when no preferred target is available.
+
+Goldader accumulates its +8% kill-gold bonus per upgrade level in exact hundredths
+within a run. Whole gold is paid once enough fractions accumulate, so small rewards
+receive the intended bonus over multiple kills. Kill ordering or same-tick batches do
+not change the total. A new run starts without any leftover gold fraction.
+
+Healers and spawners are explicitly deferred to a later pass.
 
 ## Levels and gameplay
 
-Three campaign levels are defined in `content/LevelCatalog.kt`: Waldpfad, Bergpass and Talkessel. Winning a level unlocks the next one. Completing all campaign levels unlocks the implemented endless mode; waves are generated by `content/EndlessWaves.kt`, and the best wave is saved.
+Eight campaign levels are defined in `content/LevelCatalog.kt`, in unlock order:
+Waldpfad, Bergpass, Talkessel, Flussufer, Kreuzung, Serpentinen, Festung and Letzter Wall.
+Winning a level unlocks the next one. Completing all campaign levels unlocks endless mode;
+waves are generated by `content/EndlessWaves.kt`, and the best wave is saved.
+Endless mode awards one spendable star for each new lifetime record of ten fully
+survived waves (10, 20, 30, …). Replaying an already rewarded milestone grants no
+additional record stars, including after relaunching. Completed-wave records and
+rewards are saved together; the reached wave alone does not count while its enemies
+are still active.
+An enemy reaching the base counts as resolved if the base survives. The fatal wave
+never grants a new reward. Existing high scores do not grant retroactive stars.
 
-The game includes tower specializations, a star shop, upgrade refunds, speed controls, manual/automatic wave starts and a glossary. A launcher icon is included. Google Play in-app updates and Firebase Crashlytics are configured.
+The main menu's **Erfolge** screen shows ten achievement tracks with 42 one-time
+milestones, next-target progress, rewards and completed goals. Kills accumulate across
+campaign and endless runs, including losses and manually abandoned runs. Total kills,
+armored/flying/boss kills, kills by each tower type, distinct campaign clears and
+three-star campaign ratings have separate tracks. The 198 available achievement stars
+provide long-term progression alongside up to 24 campaign-rating stars and record stars.
+Rewards are automatic. Progress is saved at cleared-wave checkpoints, on results,
+on manual/back exits and when the game Activity stops. Repeated observations and save
+retries do not count kills or award milestones twice. Direct/splash kills credit the
+lethal projectile's tower type; damage-over-time kills credit the burn source.
+
+Existing campaign ratings are credited on load. Earlier kill totals are unavailable
+in old saves and begin at zero; existing stars/upgrades remain intact. Achievement
+IDs and rewards live in `content/AchievementCatalog.kt`.
+
+See [BALANCING.md](BALANCING.md) for the current data-based balance review.
+
+In Festung, automatic follow-up waves wait for the field to clear and then allow four
+seconds of preparation. Manually calling the next wave remains available, including
+the early-wave bonus. Other levels retain their existing automatic wave timing.
+Saved stars stay associated with level IDs, and unlocks are reconciled on load after
+the campaign order changes.
+
+The game includes tower specializations, a star shop, tower sales and permanent-upgrade refunds, speed controls, manual/automatic wave starts and a glossary. A launcher icon is included. Google Play in-app updates and Firebase Crashlytics, anonymous Authentication and Cloud Firestore highscores are configured.
+
+## Online highscores
+
+A new personal best in endless mode can optionally be published after the result screen.
+The score is the number of fully completed waves; the dialog asks for a public display
+name of 2-24 characters. The saved local record and its star reward do not depend on
+publishing. The main menu shows the top 100 scores ordered from highest to lowest.
+
+Cloud Firestore collection `endless_highscores` stores one document per anonymous Firebase
+user with `name`, `score` and `updatedAt`. A transaction replaces that user's row only when
+the new score is higher. Anonymous Authentication must be enabled in the Firebase console,
+Cloud Firestore must exist, and `firestore.rules` must be deployed before release. The rules
+allow public reads, validate the exact field schema and ownership, allow only increasing
+scores, and let a player delete only their own entry. `firebase.json` and
+`firestore.indexes.json` contain the
+deployment configuration. The leaderboard remains client-reported and therefore cannot
+fully prevent scores from a modified app; Firebase App Check with Play Integrity is the
+next hardening step after the first release.
+
+The privacy policy covers the public name, score, server timestamp and anonymous Firebase
+identity. The full reset also removes the entry belonging to the current anonymous identity.
+After app data is cleared or the app is reinstalled, deletion requests for an older identity
+use the contact address shown in Info.
 
 ## Build and checks
 
@@ -59,17 +151,68 @@ cd MeiTowerdefence
 bash gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-GitHub Actions runs these unit tests, Android Lint and the debug build. The latest default-branch run inspected during the 2026-09-27 review succeeded; check [Actions](https://github.com/pehab/MeiTowerdefence/actions) for current status.
+GitHub Actions runs unit tests, Android Lint and the debug APK build for pull requests
+targeting `main` and pushes to `main`. Successful runs upload the debug APK as an artifact.
+Check [Actions](https://github.com/pehab/MeiTowerdefence/actions) for current status.
 
-Tests in `app/src/test/` cover models, simulation, path following, camera mapping and the meta-progression ViewModel using a fake save repository. These do not replace on-device checks for rendering, touch input, background/resume behavior or game balance.
+Tests in `app/src/test/` cover models, simulation, path following, camera mapping, HUD wave state and the meta-progression ViewModel using a fake save repository. These do not replace on-device checks for rendering, touch input, background/resume behavior or game balance.
 
 The checked-in `app/google-services.json` configures Firebase. Replace it with the matching configuration when using a separate Firebase project. Play updates require an eligible Play-installed build.
 
 ## Persistence and maintenance
 
-Progress is stored locally in `savegame.json`. The current implementation writes directly to the file and falls back to a new save when reading fails. Atomic writes, preserving a damaged save for recovery and explicit handling of write failures are worthwhile next improvements.
+Progress is stored locally in `savegame.json`. Writes use a synchronized temporary file
+followed by same-directory replacement. `savegame.json.bak` preserves the previous valid
+generation and is used if the primary save is missing or malformed. Damaged JSON files
+are archived as `savegame-corrupt-*.json` before starting fresh, so a later recovery
+attempt can inspect them. The save format and existing progress remain compatible.
+
+Read/write failures are shown with a retry action. Pending progress remains in memory
+after a failed save and is retried before reloading or leaving the result screen, rather
+than being replaced with older disk data. JVM tests cover recovery and failed writes.
 
 The simulation is separated from Android rendering and persistence. Keep balance/rule changes covered by simulation tests. UI strings are currently predominantly hardcoded German; extracting them to string resources remains open. Real-device gameplay and balance testing are still needed independently of a successful build.
+
+## Graphics maintenance
+
+Runtime graphics are WebP files in `app/src/main/res/drawable-nodpi/` so Android does not
+apply density scaling. Tower atlases contain three cells (base, first specialization,
+second specialization); the enemy atlas follows `EnemyType.entries`. The projectile
+atlas contains arrow, cannonball, fire and ice cells in that order.
+
+The dirt texture and projectile atlas can be regenerated with Python, Pillow and NumPy:
+
+```bash
+python3 -m pip install Pillow numpy
+python3 tools/generate_route_assets.py
+```
+
+Changes to atlas order must be reflected in `render/GameRenderer.kt` and, where used,
+`ui/GlossaryScreen.kt`. Gameplay paths and balance stay in the level/simulation data.
+
+## Release 0.4.0
+
+- Added an optional Firebase-backed endless-mode highscore list with public display names,
+  one personal entry per anonymous identity and a top-100 screen in the main menu.
+- Added developer/contact information, installed version, privacy-policy link and a
+  confirmed full progress reset covering both save copies and the player's online highscore.
+- Fixed fractional Goldader payouts, added role-specific targeting and made elemental
+  fire/ice damage bypass armor while preserving physical armor penetration.
+
+- Completed terrain artwork for all campaign levels and endless mode.
+- Unified in-game panels and end-of-level statistics with the menu style.
+- Added tower specialization, enemy and projectile sprites; expanded glossary explanations.
+- Replaced plain routes with textured dirt roads and wind direction markers.
+- Fixed endless HUD wave progression and restricted early-wave bonus indicators to an
+  available, pending wave.
+- Reordered Kreuzung before Serpentinen and added a four-second pause after clearing each
+  Festung wave, while retaining optional early calls.
+- Added one-time endless record stars and 42 cumulative achievement milestones, with
+  progress and earned rewards visible from the main menu.
+- Stabilized the in-game action area, compacted speed controls and added tower-sale confirmation.
+- Added atomic save replacement, backup recovery, corrupt-save archiving and retry handling.
+- Removed unused rendering parameters/imports and reused route drawing helpers to reduce
+  temporary allocations during rendering.
 
 ## Privacy
 

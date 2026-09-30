@@ -20,6 +20,59 @@ import kotlin.random.Random
 
 class GameSimulatorTest {
 
+    private fun endlessAtMilestone(enemyWave: Int = 9): GameSession =
+        GameSession.start(LevelCatalog.endless, MetaProgress()).copy(
+            waveIndex = 10,
+            waitingForWaveStart = true,
+            timeUntilAutoStart = 4f,
+            completedWaves = 9,
+            enemies = listOf(Enemy(
+                id = "milestone", type = EnemyType.BASIC, maxHp = 40f, hp = 40f,
+                position = LevelCatalog.endless.groundPath.first(), pathIndex = 1,
+                waveIndex = enemyWave
+            ))
+        )
+
+    @Test
+    fun fullySpawnedWaveDoesNotCountUntilItsLastEnemyResolves() {
+        val pending = GameSimulator.step(endlessAtMilestone(), 0.1f)
+        assertEquals(9, pending.completedWaves)
+        val cleared = GameSimulator.step(pending.copy(enemies = pending.enemies.map { it.copy(hp = 0f) }), 0.1f)
+        assertEquals(10, cleared.completedWaves)
+    }
+
+    @Test
+    fun overlappingWaveCannotHideAnOlderUnresolvedWave() {
+        val session = endlessAtMilestone(enemyWave = 8).copy(completedWaves = 8, waveIndex = 12)
+        val pending = GameSimulator.step(session, 0.1f)
+        assertEquals(8, pending.completedWaves)
+        val cleared = GameSimulator.step(pending.copy(enemies = emptyList()), 0.1f)
+        assertEquals(12, cleared.completedWaves)
+    }
+
+    @Test
+    fun survivingALeakCountsButTheFatalWaveDoesNot() {
+        val session = endlessAtMilestone()
+        val atEnd = session.enemies.single().copy(pathIndex = session.level.groundPath.size)
+        val survived = GameSimulator.step(session.copy(enemies = listOf(atEnd)), 0.1f)
+        assertEquals(10, survived.completedWaves)
+        val lost = GameSimulator.step(session.copy(enemies = listOf(atEnd), lives = 1), 0.1f)
+        assertEquals(GameOutcome.LOST, lost.outcome)
+        assertEquals(9, lost.completedWaves)
+    }
+
+    @Test
+    fun spawnsRememberTheirSourceWaveAcrossEarlyCalls() {
+        var session = GameSimulator.startNextWave(GameSession.start(LevelCatalog.endless, MetaProgress()))
+        session = GameSimulator.step(session, 5f)
+        assertTrue(session.waitingForWaveStart)
+        assertTrue(session.enemies.all { it.waveIndex == 0 })
+        session = GameSimulator.step(GameSimulator.startNextWave(session), 0.1f)
+        assertTrue(session.enemies.any { it.waveIndex == 0 })
+        assertTrue(session.enemies.any { it.waveIndex == 1 })
+        assertEquals(0, session.completedWaves)
+    }
+
     private fun straightLevel(
         waves: List<WaveEntry> = listOf(WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f)),
         startingGold: Int = 500,
@@ -502,5 +555,46 @@ class GameSimulatorTest {
         assertEquals(first.gold, second.gold)
         assertEquals(first.lives, second.lives)
         assertEquals(first.enemies.size, second.enemies.size)
+    }
+    private fun fortressWaitingWithEnemy(): GameSession =
+        GameSession.start(LevelCatalog.fortress, MetaProgress()).copy(
+            waveIndex = 1,
+            timeUntilAutoStart = LevelCatalog.fortress.timeBetweenWaves,
+            enemies = listOf(Enemy("old", EnemyType.ARMORED, 143f, 143f,
+                LevelCatalog.fortress.groundPath.first(), 1)),
+            nextEntityId = 1
+        )
+
+    @Test
+    fun fortressDoesNotAutoStartAnotherWaveWhileEnemiesRemain() {
+        var session = fortressWaitingWithEnemy()
+        repeat(100) { session = GameSimulator.step(session, 0.1f) }
+        assertEquals(1, session.waveIndex)
+        assertEquals(1, session.nextEntityId)
+        assertEquals(4f, session.timeUntilAutoStart, 0.001f)
+        assertTrue(session.waitingForWaveStart)
+    }
+
+    @Test
+    fun fortressAllowsFourSecondsAfterClearingBeforeAutomaticSpawnsResume() {
+        val session = fortressWaitingWithEnemy().copy(enemies = emptyList())
+        val before = GameSimulator.step(session, 3.9f)
+        assertTrue(before.waitingForWaveStart)
+        assertTrue(before.enemies.isEmpty())
+        assertEquals(session.gold, before.gold)
+        val after = GameSimulator.step(before, 0.2f)
+        assertTrue(!after.waitingForWaveStart)
+        assertTrue(after.enemies.isNotEmpty())
+        assertEquals(session.gold, after.gold) // Automatic starts never award an early-call bonus.
+    }
+
+    @Test
+    fun fortressManualCallCanStillOverlapEnemiesAndPaysTheEarlyBonus() {
+        val session = fortressWaitingWithEnemy()
+        val called = GameSimulator.startNextWave(session)
+        assertTrue(!called.waitingForWaveStart)
+        assertEquals(session.gold + GameSimulator.EARLY_WAVE_BONUS_GOLD, called.gold)
+        val after = GameSimulator.step(called, 0.1f)
+        assertEquals(2, after.enemies.size)
     }
 }

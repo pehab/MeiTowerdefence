@@ -41,7 +41,8 @@ data class MetaProgress(
     // Derived, effective bonuses - the single place every one of these numbers is defined,
     // so e.g. GameSession and the star-shop UI can't drift out of sync on what a level of
     // "Goldader" is actually worth.
-    val goldIncomeMultiplier: Float get() = 1f + 0.08f * levelOf(MetaUpgradeType.GOLD_INCOME)
+    val goldIncomeBonusPercent: Int get() = 8 * levelOf(MetaUpgradeType.GOLD_INCOME)
+    val goldIncomeMultiplier: Float get() = 1f + goldIncomeBonusPercent / 100f
     val startingGoldBonus: Int get() = 20 * levelOf(MetaUpgradeType.STARTING_GOLD)
     val startingLivesBonus: Int get() = 2 * levelOf(MetaUpgradeType.STARTING_LIVES)
     val fireSplashRadiusBonus: Float get() = 0.3f * levelOf(MetaUpgradeType.FIRE_SPLASH_RADIUS)

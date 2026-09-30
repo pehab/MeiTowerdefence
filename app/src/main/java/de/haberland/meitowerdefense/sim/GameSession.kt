@@ -7,8 +7,8 @@ import de.haberland.meitowerdefense.model.MetaProgress
  * The full state of one level playthrough at a point in time. Deliberately an immutable
  * data class rather than a bag of `var`s: [GameSimulator.step] takes one of these plus a
  * time delta and returns a new one, which is what makes the whole simulation replayable
- * and unit-testable without any Android/rendering code involved. GameView (or a
- * ViewModel) is the only thing that actually holds a mutable reference, re-assigning it
+ * and unit-testable without any Android/rendering code involved. GameController
+ * is the only thing that actually holds a mutable reference, re-assigning it
  * once per game-loop tick.
  */
 data class GameSession(
@@ -26,7 +26,8 @@ data class GameSession(
      * True whenever the next wave (waveIndex) hasn't started yet. Wave 1 stays true
      * until the player explicitly taps Start - see GameSimulator.startNextWave(). Every
      * later wave also starts this true, but [timeUntilAutoStart] counts down and starts
-     * it automatically once it hits zero, the same as before; startNextWave() lets the
+     * it automatically once it hits zero. Levels with waitForClearBeforeAutoStart hold
+     * that countdown until no living enemies remain; startNextWave() lets the
      * player call it early instead, for a small gold bonus.
      */
     val waitingForWaveStart: Boolean = true,
@@ -36,7 +37,11 @@ data class GameSession(
     val outcome: GameOutcome = GameOutcome.IN_PROGRESS,
     val stats: RunStats = RunStats(),
     /** Monotonic counter used to hand out deterministic, unique ids to new towers/enemies/projectiles. */
-    val nextEntityId: Int = 0
+    val nextEntityId: Int = 0,
+    /** Consecutive waves fully spawned and resolved while the base is still alive. */
+    val completedWaves: Int = 0,
+    /** Unpaid Goldader bonus in hundredths of gold, carried between kills within a run. */
+    val goldBonusRemainder: Int = 0
 ) {
     companion object {
         fun start(level: LevelDefinition, meta: MetaProgress): GameSession = GameSession(

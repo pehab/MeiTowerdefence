@@ -3,12 +3,16 @@ package de.haberland.meitowerdefense.ui
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
@@ -16,6 +20,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import de.haberland.meitowerdefense.content.LevelCatalog
 import de.haberland.meitowerdefense.model.LevelRating
+import de.haberland.meitowerdefense.leaderboard.FirebaseLeaderboardRepository
+import de.haberland.meitowerdefense.leaderboard.LeaderboardInput
 import de.haberland.meitowerdefense.save.FileSaveRepository
 import de.haberland.meitowerdefense.sim.GameOutcome
 import de.haberland.meitowerdefense.sim.GameSession
@@ -29,10 +35,30 @@ import de.haberland.meitowerdefense.view.GameSurfaceView
  *
  * Declared with android:configChanges="orientation|screenSize|keyboardHidden" in the
  * manifest, so this Activity is never destroyed/recreated on rotation - [controller] and
- * [metaViewModel] just live as plain local vals in [onCreate], no ViewModel or
+ * [metaViewModel] live for this Activity, no retained ViewModel or
  * SavedStateHandle needed to survive a config change that can't happen here.
  */
 class GameActivity : ComponentActivity() {
+    private lateinit var metaViewModel: MetaViewModel
+    private lateinit var controller: GameController
+
+    private fun recordRunProgress() {
+        if (!::controller.isInitialized) return
+        val session = controller.session
+        metaViewModel.recordRunProgress(session.stats)
+        if (session.level.endless) metaViewModel.recordEndlessProgress(session.completedWaves)
+    }
+
+    private fun exitGame() {
+        recordRunProgress()
+        if (metaViewModel.ensureSaved()) finish()
+    }
+
+    override fun onStop() {
+        recordRunProgress()
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -53,14 +79,18 @@ class GameActivity : ComponentActivity() {
             return
         }
 
-        val metaViewModel = MetaViewModel(FileSaveRepository(applicationContext))
-        val controller = GameController(GameSession.start(level, metaViewModel.meta))
+        metaViewModel = MetaViewModel(FileSaveRepository(applicationContext))
+        val previousEndlessBest = metaViewModel.endlessBestCompletedWaves
+        val leaderboardRepository = FirebaseLeaderboardRepository()
+        controller = GameController(GameSession.start(level, metaViewModel.meta))
 
         setContent {
             MeiTowerDefenseTheme {
+                var showHighscoreDialog by remember { mutableStateOf(false) }
+                var highscoreDecisionMade by remember { mutableStateOf(false) }
                 Box(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxSize()) {
-                        GameStatusPanel(controller = controller, onExit = { finish() })
+                        GameStatusPanel(controller = controller, onExit = ::exitGame)
                         AndroidView(
                             factory = { ctx -> GameSurfaceView(ctx).also { it.controller = controller } },
                             modifier = Modifier.weight(1f).fillMaxSize()
@@ -69,8 +99,11 @@ class GameActivity : ComponentActivity() {
                     }
 
                     val hud by controller.hudState
+                    BackHandler { exitGame() }
+                    LaunchedEffect(hud.completedWaves) { recordRunProgress() }
                     LaunchedEffect(hud.outcome) {
                         if (hud.outcome != GameOutcome.IN_PROGRESS) {
+                            recordRunProgress()
                             if (level.endless) {
                                 metaViewModel.recordEndlessResult(endlessWaveReached(controller.session))
                             } else {
@@ -96,9 +129,34 @@ class GameActivity : ComponentActivity() {
                             elapsedSeconds = controller.session.elapsedSeconds,
                             endlessWave = endlessWave,
                             endlessBestWave = if (level.endless) maxOf(metaViewModel.endlessBestWave, endlessWave ?: 0) else null,
-                            onDone = { finish() }
+                            endlessCompletedWaves = if (level.endless) hud.completedWaves else null,
+                            endlessStarsEarned = metaViewModel.endlessStarsEarned,
+                            achievementStarsEarned = metaViewModel.achievementStarsEarned,
+                            onDone = {
+                                val isNewPersonalBest = level.endless && LeaderboardInput.isNewPublishableRecord(previousEndlessBest, hud.completedWaves)
+                                if (isNewPersonalBest && !highscoreDecisionMade) showHighscoreDialog = true else exitGame()
+                            }
                         )
                     }
+                    if (showHighscoreDialog) {
+                        HighscoreSubmitDialog(
+                            score = hud.completedWaves,
+                            initialName = metaViewModel.leaderboardName,
+                            repository = leaderboardRepository,
+                            onPosted = { name ->
+                                metaViewModel.rememberLeaderboardName(name)
+                                highscoreDecisionMade = true
+                                showHighscoreDialog = false
+                                exitGame()
+                            },
+                            onSkip = {
+                                highscoreDecisionMade = true
+                                showHighscoreDialog = false
+                                exitGame()
+                            }
+                        )
+                    }
+                    SaveErrorDialog(metaViewModel)
                 }
             }
         }

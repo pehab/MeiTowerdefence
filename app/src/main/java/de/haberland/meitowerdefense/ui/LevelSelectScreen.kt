@@ -75,7 +75,7 @@ fun LevelSelectScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(LevelCatalog.all, key = { it.id }) { level ->
-                    val index = LevelCatalog.all.indexOf(level)
+                    val index = LevelArtworkCells.getValue(level.id)
                     val unlocked = metaViewModel.isUnlocked(level)
                     LevelCard(
                         level = level,
@@ -102,6 +102,8 @@ fun LevelSelectScreen(
                         }
                         Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)) {
                             Text("Unendlich", color = LevelIvory, fontFamily = FontFamily.Serif, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text("★ 1 je 10 neue Rekordwellen", color = LevelGold, fontSize = 12.sp)
+                            Text("Überstanden: ${metaViewModel.endlessBestCompletedWaves}", color = LevelGold, fontSize = 12.sp)
                             Text(
                                 if (allBeaten) "Beste Welle: ${metaViewModel.endlessBestWave}" else "Schließe alle Level ab",
                                 color = if (allBeaten) LevelGold else Color(0xFFC7B9A2),
@@ -114,6 +116,12 @@ fun LevelSelectScreen(
         }
     }
 }
+
+// Artwork cells stay tied to level IDs when the campaign order changes.
+private val LevelArtworkCells = mapOf(
+    "forest_path" to 0, "mountain_pass" to 1, "valley" to 2, "riverbank" to 3,
+    "serpentines" to 4, "crossroads" to 5, "fortress" to 6, "last_wall" to 7
+)
 
 @Composable
 private fun LevelCard(level: LevelDefinition, index: Int, atlas: ImageBitmap, unlocked: Boolean, stars: Int, onClick: () -> Unit) {

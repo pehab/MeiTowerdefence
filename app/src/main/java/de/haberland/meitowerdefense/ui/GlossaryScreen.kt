@@ -113,7 +113,7 @@ private fun GlossaryContent(modifier: Modifier = Modifier) {
             Text("Türme", color = GlossaryGold, fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold, fontSize = 20.sp)
         }
-        item { Text("Ab Stufe 3 wählst du beim nächsten Upgrade einen von zwei Zweigen.",
+        item { Text("Ab Stufe 3 wählst du beim nächsten Upgrade einen von zwei Zweigen. Bei gleicher Zielpriorität wird der Gegner beschossen, der die Basis bei normalem Tempo zuerst erreicht.",
             color = GlossaryIvory, fontSize = 13.sp) }
         items(TowerType.entries, key = { "tower-${it.name}" }) { type -> TowerGlossaryCard(type) }
         item { HorizontalDivider(Modifier.padding(vertical = 4.dp), color = GlossaryEdge) }
@@ -141,6 +141,7 @@ private fun TowerGlossaryCard(type: TowerType) {
                 Text("${type.baseCost} Gold · ${if (type.canHitFlying) "Boden + Luft" else "nur Boden"}",
                     color = GlossaryGold, fontSize = 12.sp)
                 Text(towerDescription(type), color = GlossaryIvory, fontSize = 13.sp, lineHeight = 17.sp)
+                Text(targetingDescription(type), color = GlossaryGold, fontSize = 12.sp, lineHeight = 16.sp)
             }
         }
         Specialization.branchesFor(type).forEachIndexed { index, spec ->
@@ -173,11 +174,18 @@ private fun TowerArtwork(atlas: ImageBitmap, index: Int, modifier: Modifier) {
     Image(painter = painter, contentDescription = null, contentScale = ContentScale.Fit, modifier = modifier)
 }
 
+private fun targetingDescription(type: TowerType): String = when (type) {
+    TowerType.ARCHER -> "Zielwahl: bevorzugt Flieger in Reichweite."
+    TowerType.CANNON -> "Zielwahl: bevorzugt die größte Bodengruppe im Explosionsradius."
+    TowerType.FIRE -> "Zielwahl: bevorzugt Gegner ohne Brand, berücksichtigt anfliegende Feuerschüsse."
+    TowerType.ICE -> "Zielwahl: bevorzugt ungefrorene Gegner und verteilt Verlangsamung auf neue Ziele."
+}
+
 private fun towerDescription(type: TowerType): String = when (type) {
     TowerType.ARCHER -> "Schnelle Einzelschüsse auf Boden- und Fluggegner. Hohe Reichweite; nützlich gegen Flieger."
     TowerType.CANNON -> "Langsame, starke Geschosse mit Flächenschaden. Trifft nur Bodengegner."
-    TowerType.FIRE -> "Setzt Bodengegner in Brand: zusätzlich 6 Schaden pro Sekunde für 3 Sekunden."
-    TowerType.ICE -> "Trifft Boden und Luft und senkt das Bewegungstempo für 2 Sekunden um 40 %."
+    TowerType.FIRE -> "Setzt Bodengegner in Brand: zusätzlich 6 Schaden pro Sekunde für 3 Sekunden. Treffer und Brand umgehen Rüstung."
+    TowerType.ICE -> "Trifft Boden und Luft und senkt das Bewegungstempo für 2 Sekunden um 40 %. Eisschaden umgeht Rüstung."
 }
 
 private fun specializationDescription(spec: Specialization): String = when (spec) {

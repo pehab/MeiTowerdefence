@@ -15,7 +15,6 @@ import android.graphics.Shader
 import de.haberland.meitowerdefense.R
 import de.haberland.meitowerdefense.model.EnemyType
 import de.haberland.meitowerdefense.model.GridPos
-import de.haberland.meitowerdefense.model.MetaProgress
 import de.haberland.meitowerdefense.model.Specialization
 import de.haberland.meitowerdefense.model.TowerType
 import de.haberland.meitowerdefense.model.Vec2
@@ -62,6 +61,8 @@ class GameRenderer(context: Context) {
     private val dirtTexture = BitmapFactory.decodeResource(resources, R.drawable.dirt_path_texture)
     private val dirtShader = BitmapShader(dirtTexture, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
     private val dirtMatrix = Matrix()
+    private val roadPath = Path()
+    private val roadTrackSides = floatArrayOf(-1f, 1f)
     private val projectileAtlas = BitmapFactory.decodeResource(resources, R.drawable.projectile_atlas)
     private val projectilePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val pathShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -100,6 +101,7 @@ class GameRenderer(context: Context) {
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
+    private val airFlowPaints = arrayOf(airFlowShadowPaint, airFlowPaint)
     private val buildSitePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(115, 213, 185, 120) }
     private val buildSiteEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(205, 65, 54, 34)
@@ -145,9 +147,11 @@ class GameRenderer(context: Context) {
         if (placingType != null && session.gold >= placingType.baseCost) {
             drawBuildSites(canvas, session, camera)
         }
-        session.towers.forEach { drawTower(canvas, it, camera, session.meta, selected = it.id == selectedTowerId) }
-        val enemyPositions = session.enemies.associate { it.id to it.position }
-        session.projectiles.forEach { drawProjectile(canvas, it, enemyPositions[it.targetEnemyId], camera) }
+        session.towers.forEach { drawTower(canvas, it, camera, selected = it.id == selectedTowerId) }
+        if (session.projectiles.isNotEmpty()) {
+            val enemyPositions = session.enemies.associate { it.id to it.position }
+            session.projectiles.forEach { drawProjectile(canvas, it, enemyPositions[it.targetEnemyId], camera) }
+        }
         session.enemies.forEach { drawEnemy(canvas, it, camera) }
 
         placementPreview?.let { drawPlacementPreview(canvas, it, camera) }
@@ -179,7 +183,8 @@ class GameRenderer(context: Context) {
     }
 
     private fun drawGroundRoad(canvas: Canvas, points: List<Vec2>, camera: GameCamera) {
-        val path = Path()
+        val path = roadPath
+        path.rewind()
         points.forEachIndexed { index, point ->
             val (x, y) = camera.gridToScreen(point)
             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
@@ -205,7 +210,7 @@ class GameRenderer(context: Context) {
             val offsetX = -(y2 - y1) / length * cell * 0.18f
             val offsetY = (x2 - x1) / length * cell * 0.18f
             val inset = minOf(cell * 0.35f / length, 0.25f)
-            for (side in listOf(-1f, 1f)) {
+            for (side in roadTrackSides) {
                 canvas.drawLine(x1 + (x2 - x1) * inset + offsetX * side,
                     y1 + (y2 - y1) * inset + offsetY * side,
                     x2 - (x2 - x1) * inset + offsetX * side,
@@ -237,7 +242,7 @@ class GameRenderer(context: Context) {
                 val tipY = y + uy * cell * 0.19f
                 val tailX = x - ux * cell * 0.20f
                 val tailY = y - uy * cell * 0.20f
-                for (paint in listOf(airFlowShadowPaint, airFlowPaint)) {
+                for (paint in airFlowPaints) {
                     canvas.drawLine(tailX, tailY, tipX, tipY, paint)
                     canvas.drawLine(tipX - ux * cell * 0.13f - uy * cell * 0.10f,
                         tipY - uy * cell * 0.13f + ux * cell * 0.10f, tipX, tipY, paint)
@@ -250,7 +255,7 @@ class GameRenderer(context: Context) {
         }
     }
 
-    private fun drawTower(canvas: Canvas, tower: Tower, camera: GameCamera, meta: MetaProgress, selected: Boolean) {
+    private fun drawTower(canvas: Canvas, tower: Tower, camera: GameCamera, selected: Boolean) {
         val (cx, cy) = camera.gridToScreen(tower.position)
         val half = camera.cellSizePx * 0.36f
 

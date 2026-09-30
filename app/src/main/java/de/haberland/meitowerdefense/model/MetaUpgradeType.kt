@@ -14,7 +14,7 @@ enum class MetaUpgradeType(
 ) {
     GOLD_INCOME(
         displayName = "Goldader",
-        description = "+8% Gold pro Kill und Welle je Stufe",
+        description = "+8% Gold pro besiegtem Gegner je Stufe",
         maxLevel = 5,
         baseStarCost = 2
     ),

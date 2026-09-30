@@ -68,7 +68,10 @@ class MainActivity : ComponentActivity() {
                         MainMenuScreen(
                             onPlay = { navController.navigate("levels") },
                             onStarShop = { navController.navigate("shop") },
-                            onGlossary = { navController.navigate("glossary") }
+                            onGlossary = { navController.navigate("glossary") },
+                            onAchievements = { navController.navigate("achievements") },
+                            onHighscores = { navController.navigate("highscores") },
+                            onInfo = { navController.navigate("info") }
                         )
                     }
                     composable("levels") {
@@ -82,10 +85,21 @@ class MainActivity : ComponentActivity() {
                     composable("shop") {
                         StarShopScreen(metaViewModel = metaViewModel, onBack = { navController.popBackStack() })
                     }
+                    composable("achievements") {
+                        AchievementsScreen(metaViewModel = metaViewModel, onBack = { navController.popBackStack() })
+                    }
+                    composable("highscores") {
+                        HighscoreScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable("info") {
+                        InfoScreen(metaViewModel = metaViewModel, onBack = { navController.popBackStack() })
+                    }
                     composable("glossary") {
                         GlossaryScreen(onBack = { navController.popBackStack() })
                     }
                 }
+
+                SaveErrorDialog(metaViewModel)
 
                 if (updateReadyToInstall) {
                     AlertDialog(
@@ -156,6 +170,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startGame(levelId: String) {
+        if (!metaViewModel.ensureSaved()) return
         startActivity(Intent(this, GameActivity::class.java).putExtra(GameActivity.EXTRA_LEVEL_ID, levelId))
     }
 

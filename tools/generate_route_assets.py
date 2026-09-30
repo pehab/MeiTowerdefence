@@ -1,9 +1,8 @@
 """Deterministically generate small painted route and projectile sprites (Pillow)."""
 from pathlib import Path
-import math
 import random
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 OUT = Path(__file__).resolve().parents[1] / 'app/src/main/res/drawable-nodpi'
 OUT.mkdir(parents=True, exist_ok=True)
@@ -37,13 +36,13 @@ texture.convert('RGB').save(OUT / 'dirt_path_texture.webp', 'WEBP', quality=90)
 # Transparent atlas cells: arrow, iron cannonball, flame, crystal shard.
 S = 256
 atlas = Image.new('RGBA', (S*4, S), (0,0,0,0))
-def cell(i):
+def cell():
     im = Image.new('RGBA', (S, S), (0,0,0,0))
     return im, ImageDraw.Draw(im, 'RGBA')
 def place(i, im):
     atlas.alpha_composite(im, (i*S, 0))
 
-im,d=cell(0)
+im,d=cell()
 # Shaft points to the right, with dark outline and a warm metal tip.
 d.polygon([(36,116),(174,116),(214,128),(174,140),(36,140)], fill=(45,43,37,255))
 d.polygon([(42,121),(177,121),(205,128),(177,135),(42,135)], fill=(199,157,88,255))
@@ -56,7 +55,7 @@ d.polygon([(48,124),(29,111),(90,124),(90,128)], fill=(171,199,145,245))
 d.polygon([(48,132),(29,145),(90,132),(90,128)], fill=(113,148,109,245))
 place(0,im)
 
-im,d=cell(1)
+im,d=cell()
 for rad, color in [(74,(206,162,77,34)),(65,(67,52,38,130)),(59,(30,32,36,255)),(49,(78,79,78,255))]:
     d.ellipse((128-rad,128-rad,128+rad,128+rad), fill=color)
 d.arc((78,78,181,178), 205, 340, fill=(195,181,149,255), width=9)
@@ -64,7 +63,7 @@ d.ellipse((94,84,124,106), fill=(201,193,166,165))
 d.arc((77,75,186,189), 15, 95, fill=(18,22,25,235), width=8)
 place(1,im)
 
-im,d=cell(2)
+im,d=cell()
 # Ember trailing to the left, with luminous layered core.
 d.polygon([(23,129),(89,79),(75,115),(109,87),(98,142),(163,100),(217,122),(172,174),(86,163)], fill=(121,38,22,155))
 d.polygon([(42,131),(104,99),(94,125),(132,105),(202,128),(145,161),(84,151)], fill=(238,91,24,240))
@@ -73,7 +72,7 @@ d.ellipse((133,102,198,151), fill=(255,229,116,250))
 d.ellipse((155,108,189,139), fill=(255,247,198,255))
 place(2,im)
 
-im,d=cell(3)
+im,d=cell()
 d.polygon([(20,128),(72,115),(142,88),(237,128),(142,168),(72,141)], fill=(37,86,112,235))
 d.polygon([(27,128),(146,96),(222,128),(146,128)], fill=(216,247,249,255))
 d.polygon([(27,128),(146,159),(222,128),(146,128)], fill=(100,186,216,255))

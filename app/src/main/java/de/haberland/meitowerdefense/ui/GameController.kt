@@ -34,14 +34,15 @@ data class HudSnapshot(
     /** Whether tapping startNextWave() right now would pay GameSimulator.EARLY_WAVE_BONUS_GOLD. */
     val earlyWaveBonusAvailable: Boolean,
     val outcome: GameOutcome,
-    val selectedTower: Tower?
+    val selectedTower: Tower?,
+    val completedWaves: Int = 0
 )
 
 /**
  * Owns the authoritative [GameSession] and is the only thing allowed to mutate it -
  * GameThread calls [tick] once per frame (background thread); touch input and the
  * Compose HUD only ever *submit* [GameAction]s via [onTapGrid]/[upgradeSelectedTower]/
- * [sellSelectedTower]/[startNextWave] (main thread), queued and applied at the start of
+ * [sellTower]/[startNextWave] (main thread), queued and applied at the start of
  * the next tick.
  *
  * That queue is what makes this safe without locking the whole session on every touch
@@ -111,10 +112,10 @@ class GameController(initialSession: GameSession) {
         pendingActions.add(GameAction.Upgrade(id, specialization))
     }
 
-    fun sellSelectedTower() {
-        val id = selectedTowerId ?: return
-        pendingActions.add(GameAction.Sell(id))
-        selectedTowerId = null
+    /** Sell the tower explicitly confirmed by the player, even if selection changed. */
+    fun sellTower(towerId: String) {
+        pendingActions.add(GameAction.Sell(towerId))
+        if (selectedTowerId == towerId) selectedTowerId = null
     }
 
     fun startNextWave() {
@@ -143,11 +144,14 @@ class GameController(initialSession: GameSession) {
     private fun snapshot(s: GameSession) = HudSnapshot(
         gold = s.gold,
         lives = s.lives,
-        waveIndex = s.waveIndex.coerceAtMost(s.level.waves.size),
+        waveIndex = if (s.level.endless) s.waveIndex else s.waveIndex.coerceAtMost(s.level.waves.size),
         totalWaves = if (s.level.endless) null else s.level.waves.size,
         waitingForWaveStart = s.waitingForWaveStart,
-        earlyWaveBonusAvailable = s.waveIndex > 0 && s.timeUntilAutoStart > 0f,
+        earlyWaveBonusAvailable = s.outcome == GameOutcome.IN_PROGRESS &&
+            s.waitingForWaveStart && s.waveIndex > 0 && s.timeUntilAutoStart > 0f &&
+            (s.level.endless || s.waveIndex < s.level.waves.size),
         outcome = s.outcome,
-        selectedTower = s.towers.find { it.id == selectedTowerId }
+        selectedTower = s.towers.find { it.id == selectedTowerId },
+        completedWaves = s.completedWaves
     )
 }

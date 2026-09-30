@@ -1,8 +1,13 @@
 package de.haberland.meitowerdefense.ui
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -32,6 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
@@ -79,14 +86,17 @@ fun GameStatusPanel(controller: GameController, onExit: () -> Unit) {
     val hud by controller.hudState
     var showExitConfirm by remember { mutableStateOf(false) }
     var showGlossary by remember { mutableStateOf(false) }
-    val width = (LocalConfiguration.current.screenWidthDp * 0.17f).coerceIn(112f, 176f).dp
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val cutoutLeft = with(density) { WindowInsets.displayCutout.getLeft(density, layoutDirection).toDp() }
+    val width = (LocalConfiguration.current.screenWidthDp * 0.17f).coerceIn(164f, 184f).dp + cutoutLeft
 
     Column(
         Modifier.width(width).fillMaxHeight().background(HudPanel)
             .border(1.dp, HudEdge.copy(alpha = 0.75f))
             .verticalScroll(rememberScrollState())
-            .padding(start = 24.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(start = cutoutLeft + 6.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         PanelTitle("VERTEIDIGUNG")
         Row {
@@ -101,8 +111,8 @@ fun GameStatusPanel(controller: GameController, onExit: () -> Unit) {
         HudStat("LEBEN", "${hud.lives}")
         val waveNumber = hud.waveIndex + 1
         HudStat("WELLE",
-            if (hud.totalWaves == null) "Welle $waveNumber · ∞"
-            else "Welle ${waveNumber.coerceAtMost(hud.totalWaves!!)}/${hud.totalWaves}"
+            if (hud.totalWaves == null) "$waveNumber · ∞"
+            else "${waveNumber.coerceAtMost(hud.totalWaves!!)}/${hud.totalWaves}"
         )
         PanelTitle("TEMPO")
         SpeedToggle(current = controller.speedMultiplier, onSelect = { controller.speedMultiplier = it })
@@ -124,60 +134,85 @@ fun GameStatusPanel(controller: GameController, onExit: () -> Unit) {
 fun GameActionsPanel(controller: GameController) {
     val hud by controller.hudState
     val mode = controller.inputMode
+    var pendingSale by remember { mutableStateOf<Tower?>(null) }
+    val selectedTower = hud.selectedTower
+    val actionScroll = remember(selectedTower?.id, mode) { ScrollState(0) }
     val width = (LocalConfiguration.current.screenWidthDp * 0.22f).coerceIn(148f, 220f).dp
 
     Column(
         Modifier.width(width).fillMaxHeight().background(HudPanel)
-            .border(1.dp, HudEdge.copy(alpha = 0.75f))
-            .verticalScroll(rememberScrollState()).padding(8.dp),
+            .border(1.dp, HudEdge.copy(alpha = 0.75f)).padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         PanelTitle("BEFEHLE")
         val hasNextWave = hud.totalWaves == null || hud.waveIndex < hud.totalWaves!!
-        if (hud.waitingForWaveStart && hasNextWave) {
-            HudButton(
-                label = when {
-                    hud.waveIndex == 0 -> if (hud.totalWaves == null) "ENDLOSMODUS STARTEN" else "TRAINING STARTEN"
-                    hud.earlyWaveBonusAvailable -> "NÄCHSTE WELLE (+${GameSimulator.EARLY_WAVE_BONUS_GOLD} Gold)"
-                    else -> "NÄCHSTE WELLE"
-                }, onClick = controller::startNextWave,
-                modifier = Modifier.fillMaxWidth(), prominent = true
-            )
+        // Keep the action area anchored, including while the wave button is absent.
+        Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.Center) {
+            if (hud.waitingForWaveStart && hasNextWave) {
+                HudButton(
+                    label = when {
+                        hud.waveIndex == 0 -> if (hud.totalWaves == null) "ENDLOSMODUS STARTEN" else "ANGRIFF STARTEN"
+                        hud.earlyWaveBonusAvailable -> "NÄCHSTE WELLE (+${GameSimulator.EARLY_WAVE_BONUS_GOLD} Gold)"
+                        else -> "NÄCHSTE WELLE"
+                    }, onClick = controller::startNextWave,
+                    modifier = Modifier.fillMaxWidth(), prominent = true
+                )
+            }
         }
-        when {
-            mode is InputMode.Placing -> PlacingBar(mode.type, onCancel = controller::cancelPlacing)
-            hud.selectedTower != null -> UpgradePanel(
-                tower = hud.selectedTower!!, gold = hud.gold,
-                onUpgrade = { spec -> controller.upgradeSelectedTower(spec) },
-                onSell = controller::sellSelectedTower, onDeselect = controller::deselectTower
-            )
-            else -> BuildBar(gold = hud.gold, onSelectType = controller::startPlacing)
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(actionScroll)) {
+            when {
+                mode is InputMode.Placing -> PlacingBar(mode.type, onCancel = controller::cancelPlacing)
+                selectedTower != null -> UpgradePanel(
+                    tower = selectedTower, gold = hud.gold,
+                    onUpgrade = { spec -> controller.upgradeSelectedTower(spec) },
+                    onSell = { pendingSale = selectedTower }, onDeselect = controller::deselectTower
+                )
+                else -> BuildBar(gold = hud.gold, onSelectType = controller::startPlacing)
+            }
         }
+    }
+
+    pendingSale?.let { requestedTower ->
+        val tower = controller.session.towers.find { it.id == requestedTower.id } ?: requestedTower
+        AlertDialog(
+            onDismissRequest = { pendingSale = null },
+            title = { Text("Turm verkaufen?") },
+            text = { Text("${tower.type.displayName}, Stufe ${tower.level}, für ${GameSimulator.sellValue(tower)} Gold verkaufen?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    controller.sellTower(tower.id)
+                    pendingSale = null
+                }) { Text("VERKAUFEN") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingSale = null }) { Text("BEHALTEN") }
+            }
+        )
     }
 }
 
 @Composable
 private fun SpeedToggle(current: Float, onSelect: (Float) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         listOf(1f, 2f, 4f).forEach { speed ->
             HudButton("${speed.toInt()}x", onClick = { onSelect(speed) },
-                modifier = Modifier.fillMaxWidth(), prominent = current == speed)
+                modifier = Modifier.weight(1f), prominent = current == speed)
         }
     }
 }
 
 @Composable
 private fun HudText(text: String) {
-    Text(text, color = HudIvory, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+    Text(text, color = HudIvory, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 18.sp)
 }
 
 @Composable
 private fun HudStat(label: String, value: String) {
     Column(Modifier.fillMaxWidth().background(Color(0xAA1C1A17), HudCard)
         .border(1.dp, HudEdge.copy(alpha = 0.6f), HudCard)
-        .padding(horizontal = 7.dp, vertical = 5.dp)) {
-        Text(label, color = HudGold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        .padding(horizontal = 7.dp, vertical = 3.dp)) {
+        Text(label, color = HudGold, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.Bold)
         HudText(value)
     }
 }
@@ -228,7 +263,8 @@ private fun UpgradePanel(
                 HudButton("Upgrade ($cost Gold)", onClick = { onUpgrade(null) },
                     enabled = gold >= cost, modifier = Modifier.fillMaxWidth(), prominent = true)
             } else HudText("Maximalstufe erreicht")
-            HudButton("Verkaufen", onClick = onSell, modifier = Modifier.fillMaxWidth())
         }
+        HudButton("Verkaufen", onClick = onSell,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
     }
 }
