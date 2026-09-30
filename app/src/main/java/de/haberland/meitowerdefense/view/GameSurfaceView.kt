@@ -17,7 +17,7 @@ import de.haberland.meitowerdefense.ui.InputMode
 
 /**
  * The game canvas itself. [controller] must be assigned before the surface is created
- * (GameActivity does this right after inflating the view) - everything here just reads
+ * (GameActivity does this in the AndroidView factory) - everything here just reads
  * from it (touch -> onTapGrid) or drives it (GameThread -> controller.tick per frame).
  *
  * [camera] and [lastTouchGridPos] are written on the main thread (surfaceChanged, touch
@@ -78,12 +78,12 @@ class GameSurfaceView(context: Context, attrs: AttributeSet? = null) :
         val ctrl = controller ?: return
         val cam = camera ?: return
         renderer.draw(
-            canvas, ctrl.session, cam, ctrl.selectedTowerId, placementPreview(ctrl, cam),
+            canvas, ctrl.session, cam, ctrl.selectedTowerId, placementPreview(ctrl),
             (ctrl.inputMode as? InputMode.Placing)?.type
         )
     }
 
-    private fun placementPreview(ctrl: GameController, cam: GameCamera): PlacementPreview? {
+    private fun placementPreview(ctrl: GameController): PlacementPreview? {
         val mode = ctrl.inputMode
         if (mode !is InputMode.Placing) return null
         val pos = lastTouchGridPos ?: return null

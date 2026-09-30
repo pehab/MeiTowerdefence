@@ -3,7 +3,7 @@ package de.haberland.meitowerdefense.model
 /**
  * A fixed, hand-authored level. Tower placement is not a fixed slot list - any grid cell
  * far enough from both paths and not already occupied is valid (see
- * sim/GameSession.isBuildable) - so a level only needs to define its paths and waves.
+ * sim/GameSimulator.canBuildAt) - so a level only needs to define its paths and waves.
  *
  * Endless mode deliberately has no finite [waves] list. Its waves are generated on
  * demand by content/EndlessWaves so the mode can continue indefinitely.

@@ -143,10 +143,12 @@ class GameController(initialSession: GameSession) {
     private fun snapshot(s: GameSession) = HudSnapshot(
         gold = s.gold,
         lives = s.lives,
-        waveIndex = s.waveIndex.coerceAtMost(s.level.waves.size),
+        waveIndex = if (s.level.endless) s.waveIndex else s.waveIndex.coerceAtMost(s.level.waves.size),
         totalWaves = if (s.level.endless) null else s.level.waves.size,
         waitingForWaveStart = s.waitingForWaveStart,
-        earlyWaveBonusAvailable = s.waveIndex > 0 && s.timeUntilAutoStart > 0f,
+        earlyWaveBonusAvailable = s.outcome == GameOutcome.IN_PROGRESS &&
+            s.waitingForWaveStart && s.waveIndex > 0 && s.timeUntilAutoStart > 0f &&
+            (s.level.endless || s.waveIndex < s.level.waves.size),
         outcome = s.outcome,
         selectedTower = s.towers.find { it.id == selectedTowerId }
     )

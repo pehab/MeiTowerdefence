@@ -7,8 +7,8 @@ import de.haberland.meitowerdefense.model.MetaProgress
  * The full state of one level playthrough at a point in time. Deliberately an immutable
  * data class rather than a bag of `var`s: [GameSimulator.step] takes one of these plus a
  * time delta and returns a new one, which is what makes the whole simulation replayable
- * and unit-testable without any Android/rendering code involved. GameView (or a
- * ViewModel) is the only thing that actually holds a mutable reference, re-assigning it
+ * and unit-testable without any Android/rendering code involved. GameController
+ * is the only thing that actually holds a mutable reference, re-assigning it
  * once per game-loop tick.
  */
 data class GameSession(
