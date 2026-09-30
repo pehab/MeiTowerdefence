@@ -18,9 +18,9 @@ enum class EnemyType(
     val flying: Boolean,
     val livesCost: Int = 1
 ) {
-    BASIC(displayName = "Einfach", baseHp = 40, baseSpeed = 1.4f, armor = 0, goldReward = 5, flying = false),
-    FAST(displayName = "Schnell", baseHp = 25, baseSpeed = 2.4f, armor = 0, goldReward = 6, flying = false),
-    ARMORED(displayName = "Gepanzert", baseHp = 110, baseSpeed = 0.9f, armor = 5, goldReward = 10, flying = false),
-    FLYING(displayName = "Fliegend", baseHp = 35, baseSpeed = 1.6f, armor = 0, goldReward = 8, flying = true),
-    BOSS(displayName = "Boss", baseHp = 900, baseSpeed = 0.7f, armor = 10, goldReward = 120, flying = false, livesCost = 5)
+    BASIC(displayName = "Einfach", baseHp = 46, baseSpeed = 1.4f, armor = 0, goldReward = 5, flying = false),
+    FAST(displayName = "Schnell", baseHp = 29, baseSpeed = 2.4f, armor = 0, goldReward = 6, flying = false),
+    ARMORED(displayName = "Gepanzert", baseHp = 125, baseSpeed = 0.9f, armor = 5, goldReward = 10, flying = false),
+    FLYING(displayName = "Fliegend", baseHp = 40, baseSpeed = 1.6f, armor = 0, goldReward = 8, flying = true),
+    BOSS(displayName = "Boss", baseHp = 1050, baseSpeed = 0.7f, armor = 10, goldReward = 120, flying = false, livesCost = 5)
 }
