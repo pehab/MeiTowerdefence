@@ -66,6 +66,15 @@ Kanonen gegen Bodengruppen und Eis für mehr Beschusszeit. Startkapital und
 Geschärfte Pfeile helfen besonders beim Festung-Einstieg. Stern-Upgrades können
 kostenlos mit vollständiger Rückerstattung neu verteilt werden.
 
+Ein zusätzlicher Wirtschaftsfehler: Killgold wird derzeit je Gegner mit `toInt()`
+abgerundet. Goldader Stufe 1 (+8 %) erhöht deshalb keine der normalen Belohnungen
+5/6/8/10 Gold; nur Bosse bringen mehr. Stufe 2 lässt einfache und schnelle Gegner
+weiterhin unverändert. Damit lohnt sich das Upgrade deutlich weniger als seine
+Beschreibung erwarten lässt. Als eigener nächster Fix sollten Nachkommarestbeträge
+über Kills gesammelt werden, damit der langfristige Bonus tatsächlich ankommt;
+pauschales Aufrunden würde die kleinen Belohnungen hingegen übermäßig verstärken.
+Bis dahin ist Startkapital die verlässlichere frühe Investition.
+
 Die Kampagne zahlt maximal 24 Sterne; alle Shop-Upgrades zusammen kosten 177.
 Endlosbelohnungen schaffen daher eine zusätzliche, wiederholbare Fortschrittsquelle.
 Endlos wird weiterhin erst nach Abschluss aller acht Kampagnenlevel freigeschaltet
