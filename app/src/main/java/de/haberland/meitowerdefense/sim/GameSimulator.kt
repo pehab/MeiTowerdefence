@@ -55,6 +55,9 @@ object GameSimulator {
         if (session.waitingForWaveStart) {
             // Wave 1 has no countdown and waits for an explicit tap.
             if (session.waveIndex == 0) return session
+            if (session.level.waitForClearBeforeAutoStart && session.enemies.any { !it.isDead }) {
+                return session
+            }
 
             val remaining = session.timeUntilAutoStart - dt
             if (remaining > 0f) return session.copy(timeUntilAutoStart = remaining)

@@ -60,16 +60,24 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         }
         storageReady = true
         meta = MetaProgress(stars = data.stars, upgradeLevels = data.metaUpgradeLevels)
-        levelProgress = ensureFirstLevelUnlocked(data.levelProgress)
+        levelProgress = ensureCampaignUnlocks(data.levelProgress)
         endlessBestWave = data.endlessBestWave
         persist()
     }
 
-    private fun ensureFirstLevelUnlocked(progress: Map<String, LevelProgress>): Map<String, LevelProgress> {
-        val firstId = LevelCatalog.all.firstOrNull()?.id ?: return progress
-        val current = progress[firstId] ?: LevelProgress()
-        if (current.unlocked) return progress
-        return progress + (firstId to current.copy(unlocked = true))
+    /** Reconcile unlock order on load without removing earned stars or existing access. */
+    private fun ensureCampaignUnlocks(progress: Map<String, LevelProgress>): Map<String, LevelProgress> {
+        var updated = progress
+        LevelCatalog.all.forEachIndexed { index, level ->
+            val previous = LevelCatalog.all.getOrNull(index - 1)
+            val previousCleared = previous != null && (progress[previous.id]?.bestStars ?: 0) > 0
+            val shouldUnlock = index == 0 || previousCleared
+            val current = updated[level.id] ?: LevelProgress()
+            if (shouldUnlock && !current.unlocked) {
+                updated = updated + (level.id to current.copy(unlocked = true))
+            }
+        }
+        return updated
     }
 
     fun isUnlocked(level: LevelDefinition): Boolean = levelProgress[level.id]?.unlocked == true

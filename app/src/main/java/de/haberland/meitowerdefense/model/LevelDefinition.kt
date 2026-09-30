@@ -19,7 +19,9 @@ data class LevelDefinition(
     val startingGold: Int,
     val startingLives: Int,
     val timeBetweenWaves: Float = 4f,
-    val endless: Boolean = false
+    val endless: Boolean = false,
+    /** Hold the automatic countdown while enemies are still on the map; manual calls remain available. */
+    val waitForClearBeforeAutoStart: Boolean = false
 ) {
     init {
         require(gridWidth > 0 && gridHeight > 0) { "grid dimensions must be positive" }

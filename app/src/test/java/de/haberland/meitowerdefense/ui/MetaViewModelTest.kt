@@ -2,6 +2,7 @@ package de.haberland.meitowerdefense.ui
 
 import de.haberland.meitowerdefense.content.LevelCatalog
 import de.haberland.meitowerdefense.model.MetaUpgradeType
+import de.haberland.meitowerdefense.save.LevelProgress
 import de.haberland.meitowerdefense.save.FakeSaveRepository
 import de.haberland.meitowerdefense.save.SaveRepository
 import java.io.IOException
@@ -161,5 +162,44 @@ class MetaViewModelTest {
         assertTrue(vm.retrySave())
         assertEquals(12, vm.meta.stars)
         assertNull(vm.saveError)
+    }
+    @Test
+    fun clearingRiverbankUnlocksCrossroadsThenSerpentinesThenFortress() {
+        val vm = MetaViewModel(FakeSaveRepository())
+        vm.recordLevelResult(LevelCatalog.riverbank, 18, won = true)
+        assertTrue(vm.isUnlocked(LevelCatalog.crossroads))
+        assertFalse(vm.isUnlocked(LevelCatalog.serpentines))
+        vm.recordLevelResult(LevelCatalog.crossroads, 18, won = true)
+        assertTrue(vm.isUnlocked(LevelCatalog.serpentines))
+        assertFalse(vm.isUnlocked(LevelCatalog.fortress))
+        vm.recordLevelResult(LevelCatalog.serpentines, 18, won = true)
+        assertTrue(vm.isUnlocked(LevelCatalog.fortress))
+    }
+
+    @Test
+    fun reorderingPreservesOldUnlocksAndRatingsAndOpensTheNewSuccessor() {
+        val repo = FakeSaveRepository(SaveData(stars = 7, levelProgress = mapOf(
+            LevelCatalog.riverbank.id to LevelProgress(true, 3),
+            LevelCatalog.serpentines.id to LevelProgress(true, 2),
+            LevelCatalog.crossroads.id to LevelProgress(true, 0)
+        )))
+        val vm = MetaViewModel(repo)
+        assertTrue(vm.isUnlocked(LevelCatalog.crossroads))
+        assertTrue(vm.isUnlocked(LevelCatalog.serpentines))
+        assertTrue(vm.isUnlocked(LevelCatalog.fortress))
+        assertEquals(2, vm.bestStars(LevelCatalog.serpentines))
+        assertEquals(0, vm.bestStars(LevelCatalog.crossroads))
+        assertEquals(7, vm.meta.stars)
+    }
+    @Test
+    fun anOldSaveWithOnlySerpentinesAvailableAlsoOpensCrossroadsAfterTheSwap() {
+        val vm = MetaViewModel(FakeSaveRepository(SaveData(levelProgress = mapOf(
+            LevelCatalog.riverbank.id to LevelProgress(true, 1),
+            LevelCatalog.serpentines.id to LevelProgress(true, 0)
+        ))))
+        assertTrue(vm.isUnlocked(LevelCatalog.crossroads))
+        assertTrue(vm.isUnlocked(LevelCatalog.serpentines))
+        assertFalse(vm.isUnlocked(LevelCatalog.fortress))
+        assertEquals(0, vm.meta.stars)
     }
 }

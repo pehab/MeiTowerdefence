@@ -503,4 +503,45 @@ class GameSimulatorTest {
         assertEquals(first.lives, second.lives)
         assertEquals(first.enemies.size, second.enemies.size)
     }
+    private fun fortressWaitingWithEnemy(): GameSession =
+        GameSession.start(LevelCatalog.fortress, MetaProgress()).copy(
+            waveIndex = 1,
+            timeUntilAutoStart = LevelCatalog.fortress.timeBetweenWaves,
+            enemies = listOf(Enemy("old", EnemyType.ARMORED, 143f, 143f,
+                LevelCatalog.fortress.groundPath.first(), 1)),
+            nextEntityId = 1
+        )
+
+    @Test
+    fun fortressDoesNotAutoStartAnotherWaveWhileEnemiesRemain() {
+        var session = fortressWaitingWithEnemy()
+        repeat(100) { session = GameSimulator.step(session, 0.1f) }
+        assertEquals(1, session.waveIndex)
+        assertEquals(1, session.nextEntityId)
+        assertEquals(6f, session.timeUntilAutoStart, 0.001f)
+        assertTrue(session.waitingForWaveStart)
+    }
+
+    @Test
+    fun fortressAllowsSixSecondsAfterClearingBeforeAutomaticSpawnsResume() {
+        val session = fortressWaitingWithEnemy().copy(enemies = emptyList())
+        val before = GameSimulator.step(session, 5.9f)
+        assertTrue(before.waitingForWaveStart)
+        assertTrue(before.enemies.isEmpty())
+        assertEquals(session.gold, before.gold)
+        val after = GameSimulator.step(before, 0.2f)
+        assertTrue(!after.waitingForWaveStart)
+        assertTrue(after.enemies.isNotEmpty())
+        assertEquals(session.gold, after.gold) // Automatic starts never award an early-call bonus.
+    }
+
+    @Test
+    fun fortressManualCallCanStillOverlapEnemiesAndPaysTheEarlyBonus() {
+        val session = fortressWaitingWithEnemy()
+        val called = GameSimulator.startNextWave(session)
+        assertTrue(!called.waitingForWaveStart)
+        assertEquals(session.gold + GameSimulator.EARLY_WAVE_BONUS_GOLD, called.gold)
+        val after = GameSimulator.step(called, 0.1f)
+        assertEquals(2, after.enemies.size)
+    }
 }

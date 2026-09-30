@@ -26,7 +26,8 @@ data class GameSession(
      * True whenever the next wave (waveIndex) hasn't started yet. Wave 1 stays true
      * until the player explicitly taps Start - see GameSimulator.startNextWave(). Every
      * later wave also starts this true, but [timeUntilAutoStart] counts down and starts
-     * it automatically once it hits zero, the same as before; startNextWave() lets the
+     * it automatically once it hits zero. Levels with waitForClearBeforeAutoStart hold
+     * that countdown until no living enemies remain; startNextWave() lets the
      * player call it early instead, for a small gold bonus.
      */
     val waitingForWaveStart: Boolean = true,

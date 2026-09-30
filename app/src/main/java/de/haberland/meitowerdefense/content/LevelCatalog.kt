@@ -237,7 +237,8 @@ object LevelCatalog {
         ),
         startingGold = 190,
         startingLives = 18,
-        timeBetweenWaves = 4f
+        timeBetweenWaves = 6f,
+        waitForClearBeforeAutoStart = true
     )
 
     val lastWall = LevelDefinition(
@@ -287,7 +288,7 @@ object LevelCatalog {
 
     /** Ordered campaign list; index also decides unlock order. */
     val all: List<LevelDefinition> = listOf(
-        forestPath, mountainPass, valley, riverbank, serpentines, crossroads, fortress, lastWall
+        forestPath, mountainPass, valley, riverbank, crossroads, serpentines, fortress, lastWall
     )
 
     fun byId(id: String): LevelDefinition? =
