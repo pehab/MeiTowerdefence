@@ -3,6 +3,7 @@ package de.haberland.meitowerdefense.ui
 import de.haberland.meitowerdefense.content.AchievementCatalog
 import de.haberland.meitowerdefense.content.LevelCatalog
 import de.haberland.meitowerdefense.model.EnemyType
+import de.haberland.meitowerdefense.model.MetaUpgradeType
 import de.haberland.meitowerdefense.model.TowerType
 import de.haberland.meitowerdefense.save.FakeSaveRepository
 import de.haberland.meitowerdefense.save.LevelProgress
@@ -100,10 +101,13 @@ class AchievementProgressTest {
     }
 
     @Test
-    fun catalogHasUniquePersistentIdsAndEnoughLongTermRewardsForTheShop() {
+    fun catalogHasUniquePersistentIdsAndCoversTheFullUpgradeBudget() {
         val ids = AchievementCatalog.tracks.flatMap { track -> track.thresholds.indices.map(track::milestoneId) }
         assertEquals(ids.size, ids.toSet().size)
-        assertEquals(42, ids.size)
-        assertEquals(198, AchievementCatalog.tracks.sumOf { it.rewards.sum() })
+        val upgradeBudget = MetaUpgradeType.entries.sumOf { type ->
+            (0 until type.maxLevel).sumOf { type.costForNextLevel(it) ?: 0 }
+        }
+        val available = AchievementCatalog.tracks.sumOf { it.rewards.sum() } + LevelCatalog.all.size * 3
+        assertTrue("Campaign and achievement rewards should cover all permanent upgrades", available >= upgradeBudget)
     }
 }
