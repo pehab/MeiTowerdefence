@@ -35,6 +35,10 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
     var endlessBestWave by mutableStateOf(0)
         private set
 
+    /** Reward checkpoints claimed in this GameActivity's run; separate from the high score. */
+    var endlessStarsEarned by mutableStateOf(0)
+        private set
+
     var saveError by mutableStateOf<String?>(null)
         private set
 
@@ -125,6 +129,17 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
         if (starsToAward > 0) {
             meta = meta.addStars(starsToAward)
         }
+        persist()
+    }
+
+    /** Repeatable per run; observing the same checkpoint or retrying a save never pays twice. */
+    fun recordEndlessProgress(completedWaves: Int) {
+        if (!storageReady) return
+        val earned = completedWaves.coerceAtLeast(0) / 10
+        val additional = earned - endlessStarsEarned
+        if (additional <= 0) return
+        endlessStarsEarned = earned
+        meta = meta.addStars(additional)
         persist()
     }
 

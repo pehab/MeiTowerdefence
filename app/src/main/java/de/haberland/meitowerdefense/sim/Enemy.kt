@@ -22,7 +22,9 @@ data class Enemy(
     val slowRemaining: Float = 0f,
     val frozenRemaining: Float = 0f,
     val burnDps: Float = 0f,
-    val burnRemaining: Float = 0f
+    val burnRemaining: Float = 0f,
+    /** Zero-based source wave, used to count cleared waves despite overlapping spawns. */
+    val waveIndex: Int = 0
 ) {
     val isDead: Boolean get() = hp <= 0f
 

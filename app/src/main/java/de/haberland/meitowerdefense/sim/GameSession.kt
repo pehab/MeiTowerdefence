@@ -37,7 +37,9 @@ data class GameSession(
     val outcome: GameOutcome = GameOutcome.IN_PROGRESS,
     val stats: RunStats = RunStats(),
     /** Monotonic counter used to hand out deterministic, unique ids to new towers/enemies/projectiles. */
-    val nextEntityId: Int = 0
+    val nextEntityId: Int = 0,
+    /** Consecutive waves fully spawned and resolved while the base is still alive. */
+    val completedWaves: Int = 0
 ) {
     companion object {
         fun start(level: LevelDefinition, meta: MetaProgress): GameSession = GameSession(

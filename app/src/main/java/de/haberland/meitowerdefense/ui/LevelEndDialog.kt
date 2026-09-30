@@ -46,6 +46,8 @@ fun LevelEndDialog(
     elapsedSeconds: Float,
     endlessWave: Int? = null,
     endlessBestWave: Int? = null,
+    endlessCompletedWaves: Int? = null,
+    endlessStarsEarned: Int = 0,
     onDone: () -> Unit
 ) {
     val totalSeconds = elapsedSeconds.roundToInt().coerceAtLeast(0)
@@ -89,6 +91,10 @@ fun LevelEndDialog(
                     verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     if (endlessWave != null && endlessBestWave != null) StatRow("Bestwert", "Welle $endlessBestWave")
+                    if (endlessCompletedWaves != null) {
+                        StatRow("Wellen überstanden", "$endlessCompletedWaves")
+                        StatRow("Sterne verdient", "★ $endlessStarsEarned")
+                    }
                     StatRow("Zeit", time)
                     StatRow("Gegner besiegt", "${stats.enemiesKilled}")
                     StatRow("Gold verdient", "${stats.goldEarned}")

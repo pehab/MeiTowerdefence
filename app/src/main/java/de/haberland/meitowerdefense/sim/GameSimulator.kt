@@ -39,6 +39,7 @@ object GameSimulator {
         s = fireTowers(s, dt, random)
         s = moveProjectiles(s, dt, random)
         s = removeDeadEnemies(s)
+        s = updateCompletedWaves(s)
         s = checkOutcome(s)
         return s.copy(elapsedSeconds = s.elapsedSeconds + dt)
     }
@@ -78,7 +79,7 @@ object GameSimulator {
         val newEnemies = mutableListOf<Enemy>()
 
         while (spawnIndex < schedule.size && schedule[spawnIndex].atSeconds <= elapsedInWave) {
-            newEnemies += spawnEnemy(session.level, schedule[spawnIndex], "e-$nextId")
+            newEnemies += spawnEnemy(session.level, schedule[spawnIndex], "e-$nextId", session.waveIndex)
             nextId++
             spawnIndex++
         }
@@ -122,7 +123,7 @@ object GameSimulator {
         )
     }
 
-    private fun spawnEnemy(level: LevelDefinition, spawn: ScheduledSpawn, id: String): Enemy {
+    private fun spawnEnemy(level: LevelDefinition, spawn: ScheduledSpawn, id: String, waveIndex: Int): Enemy {
         val path = if (spawn.enemyType.flying) level.airPath else level.groundPath
         val hp = spawn.enemyType.baseHp * spawn.hpMultiplier
         return Enemy(
@@ -131,7 +132,8 @@ object GameSimulator {
             maxHp = hp,
             hp = hp,
             position = path.first(),
-            pathIndex = 1
+            pathIndex = 1,
+            waveIndex = waveIndex
         )
     }
 
@@ -310,6 +312,14 @@ object GameSimulator {
                 goldEarned = session.stats.goldEarned + goldEarned
             )
         )
+    }
+
+    private fun updateCompletedWaves(session: GameSession): GameSession {
+        // The fatal wave is not survived. Earlier milestones remain earned.
+        if (session.lives <= 0) return session
+        val firstUnresolved = session.enemies.minOfOrNull { it.waveIndex } ?: session.waveIndex
+        val completed = minOf(session.waveIndex, firstUnresolved)
+        return session.copy(completedWaves = maxOf(session.completedWaves, completed))
     }
 
     private fun checkOutcome(session: GameSession): GameSession {

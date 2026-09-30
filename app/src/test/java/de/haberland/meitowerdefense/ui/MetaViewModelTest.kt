@@ -92,6 +92,53 @@ class MetaViewModelTest {
     }
 
     @Test
+    fun endlessStarsPayAtCompletedMilestonesOnlyOncePerRun() {
+        val repo = FakeSaveRepository()
+        val vm = MetaViewModel(repo)
+        vm.recordEndlessResult(10) // Reaching the boss wave alone pays nothing.
+        vm.recordEndlessProgress(9)
+        assertEquals(0, vm.meta.stars)
+        vm.recordEndlessProgress(10)
+        assertEquals(1, vm.meta.stars)
+        vm.recordEndlessProgress(10)
+        vm.recordEndlessProgress(7)
+        assertEquals(1, vm.meta.stars)
+        vm.recordEndlessProgress(29) // Catch up if Compose skipped observations.
+        assertEquals(2, vm.meta.stars)
+        assertEquals(2, vm.endlessStarsEarned)
+        assertEquals(2, repo.load().stars)
+
+        val nextRun = MetaViewModel(repo)
+        nextRun.recordEndlessProgress(10)
+        assertEquals(3, nextRun.meta.stars)
+        assertEquals(1, nextRun.endlessStarsEarned)
+    }
+
+    @Test
+    fun failedEndlessRewardSaveCanRetryWithoutAwardingTwice() {
+        val repo = UnreliableRepository()
+        val vm = MetaViewModel(repo)
+        repo.failSave = true
+        vm.recordEndlessProgress(20)
+        vm.recordEndlessProgress(20)
+        vm.reload()
+        assertEquals(2, vm.meta.stars)
+        assertNotNull(vm.saveError)
+        repo.failSave = false
+        assertTrue(vm.ensureSaved())
+        assertEquals(2, repo.data.stars)
+    }
+
+    @Test
+    fun existingEndlessHighScoresNeverAwardRetroactiveStars() {
+        val vm = MetaViewModel(FakeSaveRepository(SaveData(stars = 3, endlessBestWave = 45)))
+        assertEquals(3, vm.meta.stars)
+        assertEquals(0, vm.endlessStarsEarned)
+        vm.recordEndlessProgress(10)
+        assertEquals(4, vm.meta.stars)
+    }
+
+    @Test
     fun recordEndlessResultOnlyKeepsTheBestWaveReached() {
         val vm = MetaViewModel(FakeSaveRepository())
         vm.recordEndlessResult(5)

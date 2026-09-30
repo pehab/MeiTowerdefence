@@ -34,7 +34,8 @@ data class HudSnapshot(
     /** Whether tapping startNextWave() right now would pay GameSimulator.EARLY_WAVE_BONUS_GOLD. */
     val earlyWaveBonusAvailable: Boolean,
     val outcome: GameOutcome,
-    val selectedTower: Tower?
+    val selectedTower: Tower?,
+    val completedWaves: Int = 0
 )
 
 /**
@@ -150,6 +151,7 @@ class GameController(initialSession: GameSession) {
             s.waitingForWaveStart && s.waveIndex > 0 && s.timeUntilAutoStart > 0f &&
             (s.level.endless || s.waveIndex < s.level.waves.size),
         outcome = s.outcome,
-        selectedTower = s.towers.find { it.id == selectedTowerId }
+        selectedTower = s.towers.find { it.id == selectedTowerId },
+        completedWaves = s.completedWaves
     )
 }

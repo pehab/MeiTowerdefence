@@ -60,7 +60,10 @@ class GameActivity : ComponentActivity() {
             MeiTowerDefenseTheme {
                 Box(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxSize()) {
-                        GameStatusPanel(controller = controller, onExit = { if (metaViewModel.ensureSaved()) finish() })
+                        GameStatusPanel(controller = controller, onExit = {
+                            if (level.endless) metaViewModel.recordEndlessProgress(controller.session.completedWaves)
+                            if (metaViewModel.ensureSaved()) finish()
+                        })
                         AndroidView(
                             factory = { ctx -> GameSurfaceView(ctx).also { it.controller = controller } },
                             modifier = Modifier.weight(1f).fillMaxSize()
@@ -69,9 +72,13 @@ class GameActivity : ComponentActivity() {
                     }
 
                     val hud by controller.hudState
+                    LaunchedEffect(hud.completedWaves) {
+                        if (level.endless) metaViewModel.recordEndlessProgress(hud.completedWaves)
+                    }
                     LaunchedEffect(hud.outcome) {
                         if (hud.outcome != GameOutcome.IN_PROGRESS) {
                             if (level.endless) {
+                                metaViewModel.recordEndlessProgress(hud.completedWaves)
                                 metaViewModel.recordEndlessResult(endlessWaveReached(controller.session))
                             } else {
                                 metaViewModel.recordLevelResult(
@@ -96,6 +103,8 @@ class GameActivity : ComponentActivity() {
                             elapsedSeconds = controller.session.elapsedSeconds,
                             endlessWave = endlessWave,
                             endlessBestWave = if (level.endless) maxOf(metaViewModel.endlessBestWave, endlessWave ?: 0) else null,
+                            endlessCompletedWaves = if (level.endless) hud.completedWaves else null,
+                            endlessStarsEarned = metaViewModel.endlessStarsEarned,
                             onDone = { if (metaViewModel.ensureSaved()) finish() }
                         )
                     }

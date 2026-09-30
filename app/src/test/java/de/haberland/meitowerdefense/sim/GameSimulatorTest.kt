@@ -20,6 +20,59 @@ import kotlin.random.Random
 
 class GameSimulatorTest {
 
+    private fun endlessAtMilestone(enemyWave: Int = 9): GameSession =
+        GameSession.start(LevelCatalog.endless, MetaProgress()).copy(
+            waveIndex = 10,
+            waitingForWaveStart = true,
+            timeUntilAutoStart = 4f,
+            completedWaves = 9,
+            enemies = listOf(Enemy(
+                id = "milestone", type = EnemyType.BASIC, maxHp = 40f, hp = 40f,
+                position = LevelCatalog.endless.groundPath.first(), pathIndex = 1,
+                waveIndex = enemyWave
+            ))
+        )
+
+    @Test
+    fun fullySpawnedWaveDoesNotCountUntilItsLastEnemyResolves() {
+        val pending = GameSimulator.step(endlessAtMilestone(), 0.1f)
+        assertEquals(9, pending.completedWaves)
+        val cleared = GameSimulator.step(pending.copy(enemies = pending.enemies.map { it.copy(hp = 0f) }), 0.1f)
+        assertEquals(10, cleared.completedWaves)
+    }
+
+    @Test
+    fun overlappingWaveCannotHideAnOlderUnresolvedWave() {
+        val session = endlessAtMilestone(enemyWave = 8).copy(completedWaves = 8, waveIndex = 12)
+        val pending = GameSimulator.step(session, 0.1f)
+        assertEquals(8, pending.completedWaves)
+        val cleared = GameSimulator.step(pending.copy(enemies = emptyList()), 0.1f)
+        assertEquals(12, cleared.completedWaves)
+    }
+
+    @Test
+    fun survivingALeakCountsButTheFatalWaveDoesNot() {
+        val session = endlessAtMilestone()
+        val atEnd = session.enemies.single().copy(pathIndex = session.level.groundPath.size)
+        val survived = GameSimulator.step(session.copy(enemies = listOf(atEnd)), 0.1f)
+        assertEquals(10, survived.completedWaves)
+        val lost = GameSimulator.step(session.copy(enemies = listOf(atEnd), lives = 1), 0.1f)
+        assertEquals(GameOutcome.LOST, lost.outcome)
+        assertEquals(9, lost.completedWaves)
+    }
+
+    @Test
+    fun spawnsRememberTheirSourceWaveAcrossEarlyCalls() {
+        var session = GameSimulator.startNextWave(GameSession.start(LevelCatalog.endless, MetaProgress()))
+        session = GameSimulator.step(session, 5f)
+        assertTrue(session.waitingForWaveStart)
+        assertTrue(session.enemies.all { it.waveIndex == 0 })
+        session = GameSimulator.step(GameSimulator.startNextWave(session), 0.1f)
+        assertTrue(session.enemies.any { it.waveIndex == 0 })
+        assertTrue(session.enemies.any { it.waveIndex == 1 })
+        assertEquals(0, session.completedWaves)
+    }
+
     private fun straightLevel(
         waves: List<WaveEntry> = listOf(WaveEntry(EnemyType.BASIC, count = 1, spawnIntervalSeconds = 1f)),
         startingGold: Int = 500,
