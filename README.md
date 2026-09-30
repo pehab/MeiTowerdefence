@@ -9,6 +9,9 @@ The GitHub repository is named `MeiTowerdefence`.
 The main menu, achievements, glossary and star shop use a painted Meißen landscape with Albrechtsburg,
 Elbe and vineyards. Native Compose controls keep text, prices and progress readable.
 Level selection shows eight illustrated campaign cards and an endless-mode card.
+The main menu's Info button shows the installed app version/build number, developer
+Peter Haberland and contact email. Contact opens an email draft with the version in
+the subject; the address can also be copied. The privacy policy is linked there.
 
 All eight campaign levels and the endless map have individual painted backgrounds.
 Textured dirt roads and subtle wind direction markers are drawn from the same waypoints
@@ -148,6 +151,8 @@ Changes to atlas order must be reflected in `render/GameRenderer.kt` and, where 
 `ui/GlossaryScreen.kt`. Gameplay paths and balance stay in the level/simulation data.
 
 ## Release 0.3.0
+
+- Added developer/contact information, installed version and a privacy-policy link.
 
 - Completed terrain artwork for all campaign levels and endless mode.
 - Unified in-game panels and end-of-level statistics with the menu style.

@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,7 +44,7 @@ private val Ivory = Color(0xFFFFF1D7)
 private val Stone = Color(0xFF28231F)
 
 @Composable
-fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () -> Unit, onAchievements: () -> Unit) {
+fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () -> Unit, onAchievements: () -> Unit, onInfo: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(R.drawable.meissen_menu),
@@ -62,6 +63,14 @@ fun MainMenuScreen(onPlay: () -> Unit, onStarShop: () -> Unit, onGlossary: () ->
                 )
             )
         )
+        TextButton(
+            onClick = onInfo,
+            modifier = Modifier.align(Alignment.TopEnd).displayCutoutPadding().padding(12.dp)
+                .background(Stone.copy(alpha = 0.9f), RoundedCornerShape(6.dp))
+                .border(1.dp, Color(0xFFAA8D62), RoundedCornerShape(6.dp))
+        ) {
+            Text("Info", color = Gold, fontFamily = FontFamily.Serif, fontSize = 17.sp)
+        }
         val compact = maxHeight < 440.dp
         Column(
             modifier = Modifier.align(Alignment.CenterStart)

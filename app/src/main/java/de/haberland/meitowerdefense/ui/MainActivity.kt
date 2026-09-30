@@ -69,7 +69,8 @@ class MainActivity : ComponentActivity() {
                             onPlay = { navController.navigate("levels") },
                             onStarShop = { navController.navigate("shop") },
                             onGlossary = { navController.navigate("glossary") },
-                            onAchievements = { navController.navigate("achievements") }
+                            onAchievements = { navController.navigate("achievements") },
+                            onInfo = { navController.navigate("info") }
                         )
                     }
                     composable("levels") {
@@ -85,6 +86,9 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("achievements") {
                         AchievementsScreen(metaViewModel = metaViewModel, onBack = { navController.popBackStack() })
+                    }
+                    composable("info") {
+                        InfoScreen(onBack = { navController.popBackStack() })
                     }
                     composable("glossary") {
                         GlossaryScreen(onBack = { navController.popBackStack() })
