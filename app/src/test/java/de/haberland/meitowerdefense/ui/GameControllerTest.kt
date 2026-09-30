@@ -1,6 +1,9 @@
 package de.haberland.meitowerdefense.ui
 
 import de.haberland.meitowerdefense.content.LevelCatalog
+import de.haberland.meitowerdefense.model.GridPos
+import de.haberland.meitowerdefense.model.TowerType
+import de.haberland.meitowerdefense.sim.Tower
 import de.haberland.meitowerdefense.model.MetaProgress
 import de.haberland.meitowerdefense.sim.GameSession
 import de.haberland.meitowerdefense.sim.GameSimulator
@@ -54,5 +57,23 @@ class GameControllerTest {
         controller.startNextWave()
         controller.tick(0f)
         assertEquals(initialGold, controller.session.gold)
+    }
+    @Test
+    fun confirmedSaleUsesItsTowerIdEvenIfAnotherTowerIsSelected() {
+        val confirmedTower = Tower("confirmed", TowerType.ARCHER, GridPos(1, 1))
+        val otherTower = Tower("other", TowerType.ICE, GridPos(2, 1))
+        val session = GameSession.start(LevelCatalog.forestPath, MetaProgress()).copy(
+            towers = listOf(confirmedTower, otherTower)
+        )
+        val controller = GameController(session)
+        controller.onTapGrid(otherTower.gridPos)
+        controller.sellTower(confirmedTower.id)
+        // Selling is still queued, and no tower disappears until the game tick applies it.
+        assertEquals(2, controller.session.towers.size)
+        controller.tick(0f)
+
+        assertEquals(listOf(otherTower), controller.session.towers)
+        assertEquals(otherTower.id, controller.selectedTowerId)
+        assertEquals(session.gold + GameSimulator.sellValue(confirmedTower), controller.session.gold)
     }
 }

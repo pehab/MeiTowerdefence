@@ -372,7 +372,8 @@ object GameSimulator {
         )
     }
 
-    private fun sellValue(tower: Tower): Int {
+    /** Gold returned by selling, also used by the confirmation dialog. */
+    fun sellValue(tower: Tower): Int {
         var spent = tower.type.baseCost
         for (lvl in 1 until tower.level) {
             spent += TowerBalance.upgradeCost(tower.type, lvl) ?: 0

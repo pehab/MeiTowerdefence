@@ -88,7 +88,15 @@ The checked-in `app/google-services.json` configures Firebase. Replace it with t
 
 ## Persistence and maintenance
 
-Progress is stored locally in `savegame.json`. The current implementation writes directly to the file and falls back to a new save when reading fails. Atomic writes, preserving a damaged save for recovery and explicit handling of write failures are worthwhile next improvements.
+Progress is stored locally in `savegame.json`. Writes use a synchronized temporary file
+followed by same-directory replacement. `savegame.json.bak` preserves the previous valid
+generation and is used if the primary save is missing or malformed. Damaged JSON files
+are archived as `savegame-corrupt-*.json` before starting fresh, so a later recovery
+attempt can inspect them. The save format and existing progress remain compatible.
+
+Read/write failures are shown with a retry action. Pending progress remains in memory
+after a failed save and is retried before reloading or leaving the result screen, rather
+than being replaced with older disk data. JVM tests cover recovery and failed writes.
 
 The simulation is separated from Android rendering and persistence. Keep balance/rule changes covered by simulation tests. UI strings are currently predominantly hardcoded German; extracting them to string resources remains open. Real-device gameplay and balance testing are still needed independently of a successful build.
 
@@ -117,6 +125,8 @@ Changes to atlas order must be reflected in `render/GameRenderer.kt` and, where 
 - Replaced plain routes with textured dirt roads and wind direction markers.
 - Fixed endless HUD wave progression and restricted early-wave bonus indicators to an
   available, pending wave.
+- Stabilized the in-game action area, compacted speed controls and added tower-sale confirmation.
+- Added atomic save replacement, backup recovery, corrupt-save archiving and retry handling.
 - Removed unused rendering parameters/imports and reused route drawing helpers to reduce
   temporary allocations during rendering.
 

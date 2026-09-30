@@ -35,12 +35,30 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
     var endlessBestWave by mutableStateOf(0)
         private set
 
+    var saveError by mutableStateOf<String?>(null)
+        private set
+
+    private var storageReady = false
+    private var hasUnsavedChanges = false
+
     init {
         reload()
     }
 
     fun reload() {
-        val data = repo.load()
+        // Never replace in-memory progress with an older disk copy after a failed save.
+        if (hasUnsavedChanges) {
+            persist()
+            return
+        }
+        val data = try {
+            repo.load()
+        } catch (_: Exception) {
+            storageReady = false
+            saveError = "Der Spielstand konnte nicht geladen werden. Bitte erneut versuchen. Die gespeicherten Dateien werden nicht überschrieben."
+            return
+        }
+        storageReady = true
         meta = MetaProgress(stars = data.stars, upgradeLevels = data.metaUpgradeLevels)
         levelProgress = ensureFirstLevelUnlocked(data.levelProgress)
         endlessBestWave = data.endlessBestWave
@@ -59,17 +77,20 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
     fun bestStars(level: LevelDefinition): Int = levelProgress[level.id]?.bestStars ?: 0
 
     fun purchaseUpgrade(type: MetaUpgradeType) {
+        if (!storageReady) return
         meta = meta.purchase(type)
         persist()
     }
 
     fun resetUpgrade(type: MetaUpgradeType) {
+        if (!storageReady) return
         meta = meta.resetUpgrade(type)
         persist()
     }
 
     /** Records the outcome of a finished level: updates best stars, unlocks the next level, awards stars. */
     fun recordLevelResult(level: LevelDefinition, remainingLives: Int, won: Boolean) {
+        if (!storageReady) return
         val stars = LevelRating.starsFor(level.startingLives, remainingLives, won)
         val current = levelProgress[level.id] ?: LevelProgress()
         var updatedProgress = levelProgress + (level.id to current.copy(
@@ -100,20 +121,41 @@ class MetaViewModel(private val repo: SaveRepository) : ViewModel() {
     }
 
     fun recordEndlessResult(waveReached: Int) {
+        if (!storageReady) return
         if (waveReached > endlessBestWave) {
             endlessBestWave = waveReached
             persist()
         }
     }
 
+    fun dismissSaveError() {
+        saveError = null
+    }
+
+    fun retrySave(): Boolean {
+        if (storageReady) persist() else reload()
+        return storageReady && !hasUnsavedChanges
+    }
+
+    /** Called before leaving a result screen or opening another gameplay activity. */
+    fun ensureSaved(): Boolean = if (storageReady && !hasUnsavedChanges) true else retrySave()
+
     private fun persist() {
-        repo.save(
-            SaveData(
-                stars = meta.stars,
-                metaUpgradeLevels = meta.upgradeLevels,
-                levelProgress = levelProgress,
-                endlessBestWave = endlessBestWave
+        if (!storageReady) return
+        hasUnsavedChanges = true
+        try {
+            repo.save(
+                SaveData(
+                    stars = meta.stars,
+                    metaUpgradeLevels = meta.upgradeLevels,
+                    levelProgress = levelProgress,
+                    endlessBestWave = endlessBestWave
+                )
             )
-        )
+            hasUnsavedChanges = false
+            saveError = null
+        } catch (_: Exception) {
+            saveError = "Dein Fortschritt ist noch nicht gespeichert. Bitte erneut versuchen, bevor du das Spiel verlässt."
+        }
     }
 }

@@ -41,7 +41,7 @@ data class HudSnapshot(
  * Owns the authoritative [GameSession] and is the only thing allowed to mutate it -
  * GameThread calls [tick] once per frame (background thread); touch input and the
  * Compose HUD only ever *submit* [GameAction]s via [onTapGrid]/[upgradeSelectedTower]/
- * [sellSelectedTower]/[startNextWave] (main thread), queued and applied at the start of
+ * [sellTower]/[startNextWave] (main thread), queued and applied at the start of
  * the next tick.
  *
  * That queue is what makes this safe without locking the whole session on every touch
@@ -111,10 +111,10 @@ class GameController(initialSession: GameSession) {
         pendingActions.add(GameAction.Upgrade(id, specialization))
     }
 
-    fun sellSelectedTower() {
-        val id = selectedTowerId ?: return
-        pendingActions.add(GameAction.Sell(id))
-        selectedTowerId = null
+    /** Sell the tower explicitly confirmed by the player, even if selection changed. */
+    fun sellTower(towerId: String) {
+        pendingActions.add(GameAction.Sell(towerId))
+        if (selectedTowerId == towerId) selectedTowerId = null
     }
 
     fun startNextWave() {

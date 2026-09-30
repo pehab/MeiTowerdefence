@@ -3,6 +3,10 @@ package de.haberland.meitowerdefense.ui
 import de.haberland.meitowerdefense.content.LevelCatalog
 import de.haberland.meitowerdefense.model.MetaUpgradeType
 import de.haberland.meitowerdefense.save.FakeSaveRepository
+import de.haberland.meitowerdefense.save.SaveRepository
+import java.io.IOException
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import de.haberland.meitowerdefense.save.SaveData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -108,5 +112,54 @@ class MetaViewModelTest {
         assertEquals(first.meta.stars, second.meta.stars)
         assertEquals(first.meta.upgradeLevels, second.meta.upgradeLevels)
         assertTrue(second.isUnlocked(secondLevel))
+    }
+    private class UnreliableRepository(var data: SaveData = SaveData()) : SaveRepository {
+        var failLoad = false
+        var failSave = false
+        var saveCalls = 0
+        override fun load(): SaveData {
+            if (failLoad) throw IOException("unreadable")
+            return data
+        }
+        override fun save(data: SaveData) {
+            saveCalls++
+            if (failSave) throw IOException("disk full")
+            this.data = data
+        }
+    }
+
+    @Test
+    fun failedSaveKeepsEarnedProgressAcrossReloadUntilRetrySucceeds() {
+        val repo = UnreliableRepository()
+        val vm = MetaViewModel(repo)
+        repo.failSave = true
+        vm.recordLevelResult(firstLevel, firstLevel.startingLives, won = true)
+        assertEquals(3, vm.meta.stars)
+        assertNotNull(vm.saveError)
+        vm.reload()
+        assertEquals(3, vm.meta.stars)
+        assertEquals(3, vm.bestStars(firstLevel))
+        assertFalse(vm.ensureSaved())
+
+        repo.failSave = false
+        assertTrue(vm.retrySave())
+        assertNull(vm.saveError)
+        assertEquals(3, MetaViewModel(repo).meta.stars)
+    }
+
+    @Test
+    fun failedLoadNeverWritesAnEmptyReplacementAndCanBeRetried() {
+        val repo = UnreliableRepository(SaveData(stars = 12))
+        repo.failLoad = true
+        val vm = MetaViewModel(repo)
+        vm.recordLevelResult(firstLevel, firstLevel.startingLives, won = true)
+        assertEquals(0, repo.saveCalls)
+        assertFalse(vm.ensureSaved())
+        assertEquals(12, repo.data.stars)
+
+        repo.failLoad = false
+        assertTrue(vm.retrySave())
+        assertEquals(12, vm.meta.stars)
+        assertNull(vm.saveError)
     }
 }

@@ -87,6 +87,8 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                SaveErrorDialog(metaViewModel)
+
                 if (updateReadyToInstall) {
                     AlertDialog(
                         onDismissRequest = { updateReadyToInstall = false },
@@ -156,6 +158,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startGame(levelId: String) {
+        if (!metaViewModel.ensureSaved()) return
         startActivity(Intent(this, GameActivity::class.java).putExtra(GameActivity.EXTRA_LEVEL_ID, levelId))
     }
 

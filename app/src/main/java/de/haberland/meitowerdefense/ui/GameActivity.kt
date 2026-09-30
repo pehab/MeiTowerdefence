@@ -60,7 +60,7 @@ class GameActivity : ComponentActivity() {
             MeiTowerDefenseTheme {
                 Box(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxSize()) {
-                        GameStatusPanel(controller = controller, onExit = { finish() })
+                        GameStatusPanel(controller = controller, onExit = { if (metaViewModel.ensureSaved()) finish() })
                         AndroidView(
                             factory = { ctx -> GameSurfaceView(ctx).also { it.controller = controller } },
                             modifier = Modifier.weight(1f).fillMaxSize()
@@ -96,9 +96,10 @@ class GameActivity : ComponentActivity() {
                             elapsedSeconds = controller.session.elapsedSeconds,
                             endlessWave = endlessWave,
                             endlessBestWave = if (level.endless) maxOf(metaViewModel.endlessBestWave, endlessWave ?: 0) else null,
-                            onDone = { finish() }
+                            onDone = { if (metaViewModel.ensureSaved()) finish() }
                         )
                     }
+                    SaveErrorDialog(metaViewModel)
                 }
             }
         }
