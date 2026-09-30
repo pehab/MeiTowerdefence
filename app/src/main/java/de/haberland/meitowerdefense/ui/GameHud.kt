@@ -138,7 +138,7 @@ fun GameActionsPanel(controller: GameController) {
         if (hud.waitingForWaveStart && hasNextWave) {
             HudButton(
                 label = when {
-                    hud.waveIndex == 0 -> if (hud.totalWaves == null) "ENDLOSMODUS STARTEN" else "TRAINING STARTEN"
+                    hud.waveIndex == 0 -> if (hud.totalWaves == null) "ENDLOSMODUS STARTEN" else "ANGRIFF STARTEN"
                     hud.earlyWaveBonusAvailable -> "NÄCHSTE WELLE (+${GameSimulator.EARLY_WAVE_BONUS_GOLD} Gold)"
                     else -> "NÄCHSTE WELLE"
                 }, onClick = controller::startNextWave,
