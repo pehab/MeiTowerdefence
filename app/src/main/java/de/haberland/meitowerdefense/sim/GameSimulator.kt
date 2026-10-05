@@ -3,6 +3,7 @@ package de.haberland.meitowerdefense.sim
 import de.haberland.meitowerdefense.content.EndlessWaves
 import de.haberland.meitowerdefense.model.EnemyType
 import de.haberland.meitowerdefense.model.GridPos
+import de.haberland.meitowerdefense.model.GameBalance
 import de.haberland.meitowerdefense.model.LevelDefinition
 import de.haberland.meitowerdefense.model.Specialization
 import de.haberland.meitowerdefense.model.TowerBalance
@@ -24,11 +25,8 @@ import kotlin.random.Random
  * a device or emulator.
  */
 object GameSimulator {
-    private const val GameBalance.Gameplay.MIN_BUILD_DISTANCE_FROM_PATH = 0.6f
-    private const val GameBalance.Gameplay.PROJECTILE_SPEED = 9f
-    private const val GameBalance.Gameplay.SELL_REFUND_FRACTION = 0.6f
-    /** Reward for tapping "Nächste Welle" before the auto-start timer would have fired on its own. */
-    const val EARLY_WAVE_BONUS_GOLD = 15
+    /** Public alias retained for UI/tests; value is defined in GameBalance. */
+    const val EARLY_WAVE_BONUS_GOLD = GameBalance.Gameplay.EARLY_WAVE_BONUS_GOLD
 
     fun step(session: GameSession, dt: Float, random: Random = Random.Default): GameSession {
         if (session.outcome != GameOutcome.IN_PROGRESS || dt <= 0f) return session
