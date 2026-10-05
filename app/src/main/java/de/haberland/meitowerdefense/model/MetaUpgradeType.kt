@@ -1,55 +1,39 @@
 package de.haberland.meitowerdefense.model
 
-/**
- * Permanent, account-wide upgrades bought with stars (earned from level star-ratings,
- * see LevelResult). These stack on top of whatever tower level/specialization a player
- * has built in a given level - e.g. FIRE_SPLASH_RADIUS applies to every Fire tower
- * regardless of its chosen Specialization branch.
- */
+/** Permanent account-wide upgrades. Numeric balance values live in [GameBalance]. */
 enum class MetaUpgradeType(
     val displayName: String,
-    val description: String,
-    val maxLevel: Int,
-    val baseStarCost: Int
+    val description: String
 ) {
     GOLD_INCOME(
-        displayName = "Goldader",
-        description = "+8% Gold pro besiegtem Gegner je Stufe",
-        maxLevel = 5,
-        baseStarCost = 2
+        "Goldader",
+        "+${GameBalance.Meta.GOLD_INCOME_PERCENT_PER_LEVEL}% Gold pro besiegtem Gegner je Stufe"
     ),
     STARTING_GOLD(
-        displayName = "Startkapital",
-        description = "+20 Startgold je Stufe",
-        maxLevel = 5,
-        baseStarCost = 2
+        "Startkapital",
+        "+${GameBalance.Meta.STARTING_GOLD_PER_LEVEL} Startgold je Stufe"
     ),
     STARTING_LIVES(
-        displayName = "Grundmauern",
-        description = "+2 Leben je Stufe",
-        maxLevel = 5,
-        baseStarCost = 3
+        "Grundmauern",
+        "+${GameBalance.Meta.STARTING_LIVES_PER_LEVEL} Leben je Stufe"
     ),
     FIRE_SPLASH_RADIUS(
-        displayName = "Flammenmeister",
-        description = "Alle Feuer-Türme erhalten zusätzlichen Splash-Radius je Stufe",
-        maxLevel = 3,
-        baseStarCost = 4
+        "Flammenmeister",
+        "Alle Feuer-Türme: +${GameBalance.Meta.FIRE_SPLASH_RADIUS_PER_LEVEL} Splash-Radius je Stufe"
     ),
     ICE_SLOW_DURATION(
-        displayName = "Ewiger Frost",
-        description = "Alle Eis-Türme: längere Verlangsamungs-/Freeze-Dauer je Stufe",
-        maxLevel = 3,
-        baseStarCost = 4
+        "Ewiger Frost",
+        "Alle Eis-Türme: +${GameBalance.Meta.ICE_SLOW_DURATION_PER_LEVEL} s Verlangsamungs-/Freeze-Dauer je Stufe"
     ),
     ARCHER_DAMAGE(
-        displayName = "Geschärfte Pfeile",
-        description = "Alle Bogenschützen-Türme erhalten mehr Schaden je Stufe",
-        maxLevel = 3,
-        baseStarCost = 4
+        "Geschärfte Pfeile",
+        "Alle Bogenschützen-Türme: +${GameBalance.Meta.ARCHER_DAMAGE_PERCENT_PER_LEVEL}% Schaden je Stufe"
     );
 
-    /** Star cost to go from [currentLevel] to currentLevel+1, or null if already maxed. */
+    private val balance get() = GameBalance.metaUpgrade(this)
+    val maxLevel: Int get() = balance.maxLevel
+    val baseStarCost: Int get() = balance.baseStarCost
+
     fun costForNextLevel(currentLevel: Int): Int? {
         if (currentLevel >= maxLevel) return null
         return baseStarCost * (currentLevel + 1)
