@@ -24,9 +24,9 @@ import kotlin.random.Random
  * a device or emulator.
  */
 object GameSimulator {
-    private const val MIN_BUILD_DISTANCE_FROM_PATH = 0.6f
-    private const val PROJECTILE_SPEED = 9f
-    private const val SELL_REFUND_FRACTION = 0.6f
+    private const val GameBalance.Gameplay.MIN_BUILD_DISTANCE_FROM_PATH = 0.6f
+    private const val GameBalance.Gameplay.PROJECTILE_SPEED = 9f
+    private const val GameBalance.Gameplay.SELL_REFUND_FRACTION = 0.6f
     /** Reward for tapping "Nächste Welle" before the auto-start timer would have fired on its own. */
     const val EARLY_WAVE_BONUS_GOLD = 15
 
@@ -231,7 +231,7 @@ object GameSimulator {
         id = id,
         position = tower.position,
         targetEnemyId = targetId,
-        speed = PROJECTILE_SPEED,
+        speed = GameBalance.Gameplay.PROJECTILE_SPEED,
         damage = tower.damage(session.meta),
         armorPierce = tower.armorPierce,
         splashRadius = tower.splashRadius(session.meta),
@@ -384,8 +384,8 @@ object GameSimulator {
         if (gridPos.row !in 0 until session.level.gridHeight) return false
         if (session.towers.any { it.gridPos == gridPos }) return false
         val point = gridPos.toVec2()
-        return minDistanceToPath(point, session.level.groundPath) >= MIN_BUILD_DISTANCE_FROM_PATH &&
-            minDistanceToPath(point, session.level.airPath) >= MIN_BUILD_DISTANCE_FROM_PATH
+        return minDistanceToPath(point, session.level.groundPath) >= GameBalance.Gameplay.MIN_BUILD_DISTANCE_FROM_PATH &&
+            minDistanceToPath(point, session.level.airPath) >= GameBalance.Gameplay.MIN_BUILD_DISTANCE_FROM_PATH
     }
 
     /** Returns null (instead of throwing) when the build is invalid, so callers can just no-op on null. */
@@ -439,7 +439,7 @@ object GameSimulator {
         for (lvl in 1 until tower.level) {
             spent += TowerBalance.upgradeCost(tower.type, lvl) ?: 0
         }
-        return (spent * SELL_REFUND_FRACTION).toInt()
+        return (spent * GameBalance.Gameplay.SELL_REFUND_FRACTION).toInt()
     }
 
     private fun minDistanceToPath(point: Vec2, path: List<Vec2>): Float {
