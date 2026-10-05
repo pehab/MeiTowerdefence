@@ -1,10 +1,5 @@
 package de.haberland.meitowerdefense.model
 
-/**
- * Account-wide progress: total stars and how many levels of each [MetaUpgradeType] have
- * been bought. Immutable - [purchase] returns an updated copy, the natural shape for
- * something that gets serialized to a save file after every change (see save/SaveData.kt).
- */
 data class MetaProgress(
     val stars: Int = 0,
     val upgradeLevels: Map<MetaUpgradeType, Int> = emptyMap()
@@ -16,7 +11,6 @@ data class MetaProgress(
         return stars >= cost
     }
 
-    /** Returns this unchanged if [type] is already maxed or not affordable. */
     fun purchase(type: MetaUpgradeType): MetaProgress {
         val level = levelOf(type)
         val cost = type.costForNextLevel(level) ?: return this
@@ -26,11 +20,6 @@ data class MetaProgress(
 
     fun addStars(amount: Int): MetaProgress = copy(stars = stars + amount)
 
-    /**
-     * Fully refunds every star spent on [type] and resets it to level 0 - lets a player
-     * reallocate stars to a different upgrade without being punished for an earlier
-     * choice. A no-op if [type] is already at level 0.
-     */
     fun resetUpgrade(type: MetaUpgradeType): MetaProgress {
         val level = levelOf(type)
         if (level == 0) return this
@@ -38,14 +27,17 @@ data class MetaProgress(
         return copy(stars = stars + refund, upgradeLevels = upgradeLevels - type)
     }
 
-    // Derived, effective bonuses - the single place every one of these numbers is defined,
-    // so e.g. GameSession and the star-shop UI can't drift out of sync on what a level of
-    // "Goldader" is actually worth.
-    val goldIncomeBonusPercent: Int get() = 8 * levelOf(MetaUpgradeType.GOLD_INCOME)
+    val goldIncomeBonusPercent: Int
+        get() = GameBalance.Meta.GOLD_INCOME_PERCENT_PER_LEVEL * levelOf(MetaUpgradeType.GOLD_INCOME)
     val goldIncomeMultiplier: Float get() = 1f + goldIncomeBonusPercent / 100f
-    val startingGoldBonus: Int get() = 20 * levelOf(MetaUpgradeType.STARTING_GOLD)
-    val startingLivesBonus: Int get() = 2 * levelOf(MetaUpgradeType.STARTING_LIVES)
-    val fireSplashRadiusBonus: Float get() = 0.3f * levelOf(MetaUpgradeType.FIRE_SPLASH_RADIUS)
-    val iceSlowDurationBonus: Float get() = 0.5f * levelOf(MetaUpgradeType.ICE_SLOW_DURATION)
-    val archerDamageMultiplierBonus: Float get() = 0.15f * levelOf(MetaUpgradeType.ARCHER_DAMAGE)
+    val startingGoldBonus: Int
+        get() = GameBalance.Meta.STARTING_GOLD_PER_LEVEL * levelOf(MetaUpgradeType.STARTING_GOLD)
+    val startingLivesBonus: Int
+        get() = GameBalance.Meta.STARTING_LIVES_PER_LEVEL * levelOf(MetaUpgradeType.STARTING_LIVES)
+    val fireSplashRadiusBonus: Float
+        get() = GameBalance.Meta.FIRE_SPLASH_RADIUS_PER_LEVEL * levelOf(MetaUpgradeType.FIRE_SPLASH_RADIUS)
+    val iceSlowDurationBonus: Float
+        get() = GameBalance.Meta.ICE_SLOW_DURATION_PER_LEVEL * levelOf(MetaUpgradeType.ICE_SLOW_DURATION)
+    val archerDamageMultiplierBonus: Float
+        get() = (GameBalance.Meta.ARCHER_DAMAGE_PERCENT_PER_LEVEL / 100f) * levelOf(MetaUpgradeType.ARCHER_DAMAGE)
 }

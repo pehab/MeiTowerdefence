@@ -1,47 +1,42 @@
 package de.haberland.meitowerdefense.content
 
 import de.haberland.meitowerdefense.model.EnemyType
+import de.haberland.meitowerdefense.model.GameBalance
 import de.haberland.meitowerdefense.model.WaveEntry
 import de.haberland.meitowerdefense.model.WaveGroup
 
-/**
- * Deterministic endless-wave generator. The same wave number always produces the same
- * composition, which keeps runs comparable and makes the high score meaningful.
- *
- * Enemy health grows slightly faster than linear in the opening waves and increasingly
- * faster later on. This keeps the mode approachable at first while preventing fully
- * upgraded defenses from coasting through the high double-digit waves.
- */
+/** Deterministic endless-wave generator. Numeric tuning lives in [GameBalance.Endless]. */
 object EndlessWaves {
 
     fun wave(index: Int): WaveEntry {
         require(index >= 0) { "index must be >= 0" }
+        val b = GameBalance.Endless
         val number = index + 1
         val hp = hpMultiplier(index)
-        val count = 6 + (index * 0.7f).toInt()
+        val count = b.BASE_COUNT + (index * b.COUNT_GROWTH_PER_WAVE).toInt()
 
-        if (number % 10 == 0) {
+        if (number % b.BOSS_EVERY_N_WAVES == 0) {
             return WaveEntry(
                 listOf(
                     WaveGroup(
                         enemyType = EnemyType.BOSS,
-                        count = 1 + index / 30,
-                        spawnIntervalSeconds = 3f,
-                        hpMultiplier = hp * 1.1f
+                        count = b.BOSS_BASE_COUNT + index / b.BOSS_EXTRA_EVERY_WAVES,
+                        spawnIntervalSeconds = b.BOSS_SPAWN_INTERVAL,
+                        hpMultiplier = hp * b.BOSS_HP_MULTIPLIER
                     ),
                     WaveGroup(
                         enemyType = EnemyType.FAST,
-                        count = 6 + index / 2,
-                        spawnIntervalSeconds = 0.45f,
+                        count = b.BOSS_FAST_BASE_COUNT + index / b.BOSS_FAST_COUNT_DIVISOR,
+                        spawnIntervalSeconds = b.BOSS_FAST_SPAWN_INTERVAL,
                         hpMultiplier = hp,
-                        startDelaySeconds = 1.5f
+                        startDelaySeconds = b.BOSS_FAST_START_DELAY
                     ),
                     WaveGroup(
                         enemyType = EnemyType.FLYING,
-                        count = 4 + index / 3,
-                        spawnIntervalSeconds = 0.6f,
+                        count = b.BOSS_FLYING_BASE_COUNT + index / b.BOSS_FLYING_COUNT_DIVISOR,
+                        spawnIntervalSeconds = b.BOSS_FLYING_SPAWN_INTERVAL,
                         hpMultiplier = hp,
-                        startDelaySeconds = 3f
+                        startDelaySeconds = b.BOSS_FLYING_START_DELAY
                     )
                 )
             )
@@ -56,28 +51,29 @@ object EndlessWaves {
                     else -> EnemyType.BASIC
                 },
                 count = count,
-                spawnIntervalSeconds = (0.85f - index * 0.012f).coerceAtLeast(0.28f),
+                spawnIntervalSeconds = (b.MAIN_SPAWN_INTERVAL_START - index * b.MAIN_SPAWN_INTERVAL_DECAY)
+                    .coerceAtLeast(b.MAIN_SPAWN_INTERVAL_MIN),
                 hpMultiplier = hp
             )
         )
 
-        if (number >= 5) {
+        if (number >= b.FLYING_START_WAVE) {
             groups += WaveGroup(
                 enemyType = EnemyType.FLYING,
-                count = 3 + index / 4,
-                spawnIntervalSeconds = 0.7f.coerceAtLeast(0.35f),
-                hpMultiplier = hp * 0.9f,
-                startDelaySeconds = 2f
+                count = b.FLYING_BASE_COUNT + index / b.FLYING_COUNT_DIVISOR,
+                spawnIntervalSeconds = b.FLYING_SPAWN_INTERVAL,
+                hpMultiplier = hp * b.FLYING_HP_MULTIPLIER,
+                startDelaySeconds = b.FLYING_START_DELAY
             )
         }
 
-        if (number >= 8 && number % 2 == 0) {
+        if (number >= b.EXTRA_FAST_START_WAVE && number % 2 == 0) {
             groups += WaveGroup(
                 enemyType = EnemyType.FAST,
-                count = 4 + index / 5,
-                spawnIntervalSeconds = 0.38f,
+                count = b.EXTRA_FAST_BASE_COUNT + index / b.EXTRA_FAST_COUNT_DIVISOR,
+                spawnIntervalSeconds = b.EXTRA_FAST_SPAWN_INTERVAL,
                 hpMultiplier = hp,
-                startDelaySeconds = 1f
+                startDelaySeconds = b.EXTRA_FAST_START_DELAY
             )
         }
 
@@ -86,6 +82,6 @@ object EndlessWaves {
 
     internal fun hpMultiplier(index: Int): Float {
         require(index >= 0) { "index must be >= 0" }
-        return 1f + index * 0.115f + index * index * 0.0015f
+        return GameBalance.Endless.hpMultiplier(index)
     }
 }

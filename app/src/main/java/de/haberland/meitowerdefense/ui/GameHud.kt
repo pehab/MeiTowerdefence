@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.haberland.meitowerdefense.model.MetaProgress
 import de.haberland.meitowerdefense.model.Specialization
 import de.haberland.meitowerdefense.model.TowerType
 import de.haberland.meitowerdefense.sim.GameSimulator
@@ -164,7 +165,7 @@ fun GameActionsPanel(controller: GameController) {
             when {
                 mode is InputMode.Placing -> PlacingBar(mode.type, onCancel = controller::cancelPlacing)
                 selectedTower != null -> UpgradePanel(
-                    tower = selectedTower, gold = hud.gold,
+                    tower = selectedTower, gold = hud.gold, meta = controller.session.meta,
                     onUpgrade = { spec -> controller.upgradeSelectedTower(spec) },
                     onSell = { pendingSale = selectedTower }, onDeselect = controller::deselectTower
                 )
@@ -241,6 +242,7 @@ private fun PlacingBar(type: TowerType, onCancel: () -> Unit) {
 private fun UpgradePanel(
     tower: Tower,
     gold: Int,
+    meta: MetaProgress,
     onUpgrade: (Specialization?) -> Unit,
     onSell: () -> Unit,
     onDeselect: () -> Unit
@@ -249,17 +251,28 @@ private fun UpgradePanel(
         PanelTitle("TURM")
         HudText("${tower.type.displayName} · Stufe ${tower.level}")
         tower.specialization?.let { Text(it.displayName, color = HudGold, fontSize = 12.sp) }
+        Text(towerStatsLine(tower, meta), color = HudMuted, fontSize = 10.sp, lineHeight = 13.sp)
         HudButton("Schließen", onClick = onDeselect, modifier = Modifier.fillMaxWidth())
         if (tower.needsSpecializationChoice) {
             val cost = tower.upgradeCost()
             HudText("Spezialisierung wählen (${cost ?: 0} Gold):")
             Specialization.branchesFor(tower.type).forEach { spec ->
+                val preview = tower.copy(level = tower.level + 1, specialization = spec)
+                Text(
+                    "${spec.displayName}: ${upgradeDeltaLine(tower, preview, meta)}",
+                    color = HudMuted, fontSize = 10.sp, lineHeight = 13.sp
+                )
                 HudButton(spec.displayName, onClick = { onUpgrade(spec) },
                     enabled = cost != null && gold >= cost, modifier = Modifier.fillMaxWidth(), prominent = true)
             }
         } else {
             val cost = tower.upgradeCost()
             if (cost != null) {
+                val preview = tower.copy(level = tower.level + 1)
+                Text(
+                    "Bringt: ${upgradeDeltaLine(tower, preview, meta)}",
+                    color = HudMuted, fontSize = 10.sp, lineHeight = 13.sp
+                )
                 HudButton("Upgrade ($cost Gold)", onClick = { onUpgrade(null) },
                     enabled = gold >= cost, modifier = Modifier.fillMaxWidth(), prominent = true)
             } else HudText("Maximalstufe erreicht")
@@ -267,4 +280,50 @@ private fun UpgradePanel(
         HudButton("Verkaufen", onClick = onSell,
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
     }
+}
+
+
+private fun towerStatsLine(tower: Tower, meta: MetaProgress): String = buildString {
+    append("Schaden ${statFmt(tower.damage(meta))} · ${statFmt(tower.fireRate)}/s")
+    append(" · Reichweite ${statFmt(tower.range)}")
+    val splash = tower.splashRadius(meta)
+    if (splash > 0f) append(" · Splash ${statFmt(splash)}")
+    if (tower.armorPierce > 0) append(" · Rüstung −${tower.armorPierce}")
+    if (tower.burnDps > 0f) append(" · Brand ${statFmt(tower.burnDps)}/s × ${statFmt(tower.burnDuration)} s")
+    if (tower.slowFactor > 0f) append(" · Slow ${(tower.slowFactor * 100).toInt()} % × ${statFmt(tower.slowDuration(meta))} s")
+    if (tower.freezeChance > 0f) append(" · Freeze ${(tower.freezeChance * 100).toInt()} %")
+    if (tower.extraTargetChance > 0f) append(" · Zweitziel ${(tower.extraTargetChance * 100).toInt()} %")
+}
+
+private fun upgradeDeltaLine(before: Tower, after: Tower, meta: MetaProgress): String {
+    val changes = mutableListOf<String>()
+    fun changed(label: String, old: Float, new: Float, suffix: String = "") {
+        if (kotlin.math.abs(new - old) > 0.0001f) {
+            changes += "$label ${statFmt(old)}→${statFmt(new)}$suffix"
+        }
+    }
+
+    changed("Schaden", before.damage(meta), after.damage(meta))
+    changed("Feuerrate", before.fireRate, after.fireRate, "/s")
+    changed("Reichweite", before.range, after.range)
+    changed("Splash", before.splashRadius(meta), after.splashRadius(meta))
+    if (before.armorPierce != after.armorPierce) changes += "Rüstung −${before.armorPierce}→−${after.armorPierce}"
+    changed("Brand", before.burnDps, after.burnDps, "/s")
+    changed("Branddauer", before.burnDuration, after.burnDuration, " s")
+    if (kotlin.math.abs(before.slowFactor - after.slowFactor) > 0.0001f) {
+        changes += "Slow ${(before.slowFactor * 100).toInt()}→${(after.slowFactor * 100).toInt()} %"
+    }
+    changed("Slow-Dauer", before.slowDuration(meta), after.slowDuration(meta), " s")
+    if (kotlin.math.abs(before.freezeChance - after.freezeChance) > 0.0001f) {
+        changes += "Freeze ${(before.freezeChance * 100).toInt()}→${(after.freezeChance * 100).toInt()} %"
+    }
+    if (kotlin.math.abs(before.extraTargetChance - after.extraTargetChance) > 0.0001f) {
+        changes += "Zweitziel ${(before.extraTargetChance * 100).toInt()}→${(after.extraTargetChance * 100).toInt()} %"
+    }
+    return if (changes.isEmpty()) "keine Kampfwertänderung" else changes.joinToString(" · ")
+}
+
+private fun statFmt(value: Float): String {
+    val raw = java.lang.String.format(java.util.Locale.US, "%.2f", value)
+    return raw.trimEnd('0').trimEnd('.')
 }
