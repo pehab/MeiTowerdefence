@@ -208,25 +208,27 @@ private fun specializationStats(spec: Specialization): String = buildString {
     append(parts.joinToString(" · "))
 }
 
-private fun fmt(value: Float): String =
-    if (value % 1f == 0f) value.toInt().toString() else "%.2f".format(value).trimEnd('0').trimEnd(',')
+private fun fmt(value: Float): String {
+    if (value % 1f == 0f) return value.toInt().toString()
+    return java.lang.String.format(java.util.Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+}
 
 private fun towerDescription(type: TowerType): String = when (type) {
     TowerType.ARCHER -> "Schnelle Einzelschüsse auf Boden- und Fluggegner. Hohe Reichweite; nützlich gegen Flieger."
     TowerType.CANNON -> "Langsame, starke Geschosse mit Flächenschaden. Trifft nur Bodengegner."
-    TowerType.FIRE -> "Setzt Bodengegner in Brand: zusätzlich 6 Schaden pro Sekunde für 3 Sekunden. Treffer und Brand umgehen Rüstung."
-    TowerType.ICE -> "Trifft Boden und Luft und senkt das Bewegungstempo für 2 Sekunden um 40 %. Eisschaden umgeht Rüstung."
+    TowerType.FIRE -> "Setzt Bodengegner in Brand. Direkter Treffer und Brand umgehen Rüstung."
+    TowerType.ICE -> "Trifft Boden und Luft, verlangsamt Gegner und umgeht mit Eisschaden Rüstung."
 }
 
 private fun specializationDescription(spec: Specialization): String = when (spec) {
-    Specialization.ARCHER_SNIPER -> "+80 % Schaden, 30 % langsamer; ignoriert 6 Rüstung."
-    Specialization.ARCHER_RAPID -> "+70 % Feuerrate; 35 % Chance auf einen Schuss gegen ein zweites Ziel."
-    Specialization.CANNON_SIEGE -> "Größerer Explosionsradius (+0,6 Felder); ignoriert 8 Rüstung."
-    Specialization.CANNON_MORTAR -> "Sehr großer Explosionsradius (+1,2 Felder), 30 % mehr Reichweite, 25 % weniger Schaden."
-    Specialization.FIRE_INFERNO -> "Brandschaden +6 pro Sekunde; das Feuer brennt 2 Sekunden länger."
-    Specialization.FIRE_SCORCH -> "+30 % direkter Schaden und Flächenschaden im Radius von 1 Feld."
-    Specialization.ICE_DEEP_FREEZE -> "25 % Chance auf vollständiges Einfrieren; Verlangsamung hält 1,5 Sekunden länger."
-    Specialization.ICE_FROSTBITE -> "Verlangsamt um 60 % und verursacht 2 Brandschaden pro Sekunde für 2 Sekunden."
+    Specialization.ARCHER_SNIPER -> "Langsame, schwere Schüsse für stark gepanzerte Einzelziele."
+    Specialization.ARCHER_RAPID -> "Sehr hohe Schussfolge mit Chance auf ein zusätzliches Ziel."
+    Specialization.CANNON_SIEGE -> "Starke Boden-Killzone mit größerem Splash und Rüstungsdurchdringung."
+    Specialization.CANNON_MORTAR -> "Große Reichweite und große Explosionen, dafür weniger direkter Schaden."
+    Specialization.FIRE_INFERNO -> "Maximiert Brandschaden und Branddauer."
+    Specialization.FIRE_SCORCH -> "Mehr Direktschaden und Flächenschaden beim Treffer."
+    Specialization.ICE_DEEP_FREEZE -> "Kann Gegner vollständig einfrieren und verlängert die Kontrollwirkung."
+    Specialization.ICE_FROSTBITE -> "Stärkere Verlangsamung mit zusätzlichem Brandschaden."
 }
 
 @Composable
