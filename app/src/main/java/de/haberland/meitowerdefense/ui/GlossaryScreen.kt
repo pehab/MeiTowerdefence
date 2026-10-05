@@ -140,6 +140,7 @@ private fun TowerGlossaryCard(type: TowerType) {
                     fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Text("${type.baseCost} Gold · ${if (type.canHitFlying) "Boden + Luft" else "nur Boden"}",
                     color = GlossaryGold, fontSize = 12.sp)
+                Text(towerBaseStats(type), color = GlossaryIvory, fontSize = 12.sp, lineHeight = 15.sp)
                 Text(towerDescription(type), color = GlossaryIvory, fontSize = 13.sp, lineHeight = 17.sp)
                 Text(targetingDescription(type), color = GlossaryGold, fontSize = 12.sp, lineHeight = 16.sp)
             }
@@ -150,6 +151,8 @@ private fun TowerGlossaryCard(type: TowerType) {
                 Column(Modifier.padding(start = 10.dp)) {
                     Text(spec.displayName, color = GlossaryGold, fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(specializationStats(spec), color = GlossaryIvory,
+                        fontSize = 12.sp, lineHeight = 15.sp)
                     Text(specializationDescription(spec), color = GlossaryIvory,
                         fontSize = 12.sp, lineHeight = 15.sp)
                 }
@@ -180,6 +183,33 @@ private fun targetingDescription(type: TowerType): String = when (type) {
     TowerType.FIRE -> "Zielwahl: bevorzugt Gegner ohne Brand, berücksichtigt anfliegende Feuerschüsse."
     TowerType.ICE -> "Zielwahl: bevorzugt ungefrorene Gegner und verteilt Verlangsamung auf neue Ziele."
 }
+
+private fun towerBaseStats(type: TowerType): String = buildString {
+    append("Schaden ${fmt(type.baseDamage)} · Feuerrate ${fmt(type.baseFireRate)}/s · Reichweite ${fmt(type.baseRange)}")
+    if (type.baseSplashRadius > 0f) append(" · Splash ${fmt(type.baseSplashRadius)}")
+    if (type.burnDamagePerSecond > 0f) append(" · Brand ${fmt(type.burnDamagePerSecond)}/s für ${fmt(type.burnDurationSeconds)} s")
+    if (type.slowFactor > 0f) append(" · Slow ${(type.slowFactor * 100).toInt()} % für ${fmt(type.slowDurationSeconds)} s")
+}
+
+private fun specializationStats(spec: Specialization): String = buildString {
+    val parts = mutableListOf<String>()
+    if (spec.damageMultiplier != 1f) parts += "Schaden ×${fmt(spec.damageMultiplier)}"
+    if (spec.fireRateMultiplier != 1f) parts += "Feuerrate ×${fmt(spec.fireRateMultiplier)}"
+    if (spec.rangeMultiplier != 1f) parts += "Reichweite ×${fmt(spec.rangeMultiplier)}"
+    if (spec.splashRadiusBonus != 0f) parts += "Splash +${fmt(spec.splashRadiusBonus)}"
+    if (spec.splashOnHitBonus != 0f) parts += "Treffer-Splash +${fmt(spec.splashOnHitBonus)}"
+    if (spec.armorPierce != 0) parts += "Rüstungsdurchdringung ${spec.armorPierce}"
+    if (spec.extraTargetChance != 0f) parts += "Zweitziel ${(spec.extraTargetChance * 100).toInt()} %"
+    if (spec.freezeChanceBonus != 0f) parts += "Freeze ${(spec.freezeChanceBonus * 100).toInt()} %"
+    if (spec.slowDurationBonus != 0f) parts += "Slow-Dauer +${fmt(spec.slowDurationBonus)} s"
+    if (spec.slowFactorBonus != 0f) parts += "Slow +${(spec.slowFactorBonus * 100).toInt()} %"
+    if (spec.burnDamageBonus != 0f) parts += "Brand +${fmt(spec.burnDamageBonus)}/s"
+    if (spec.burnDurationBonus != 0f) parts += "Branddauer +${fmt(spec.burnDurationBonus)} s"
+    append(parts.joinToString(" · "))
+}
+
+private fun fmt(value: Float): String =
+    if (value % 1f == 0f) value.toInt().toString() else "%.2f".format(value).trimEnd('0').trimEnd(',')
 
 private fun towerDescription(type: TowerType): String = when (type) {
     TowerType.ARCHER -> "Schnelle Einzelschüsse auf Boden- und Fluggegner. Hohe Reichweite; nützlich gegen Flieger."
@@ -220,6 +250,7 @@ private fun EnemyGlossaryRow(type: EnemyType) {
                 append("HP ${type.baseHp} · Tempo ${"%.1f".format(type.baseSpeed)}")
                 if (type.armor > 0) append(" · Rüstung ${type.armor}")
                 append(if (type.flying) " · fliegt" else " · Boden")
+                append(" · ${type.goldReward} Gold")
                 if (type.livesCost > 1) append(" · kostet ${type.livesCost} Leben")
             }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
