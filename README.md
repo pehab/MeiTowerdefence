@@ -1,7 +1,7 @@
 # MeiTowerDefense
 
 Android tower-defense game written in Kotlin, with Jetpack Compose menus and a SurfaceView game canvas.
-Current version: **0.4.1**, `versionCode 6`; application ID `de.haberland.meitowerdefense`.
+Current version: **0.4.3**, `versionCode 8`; application ID `de.haberland.meitowerdefense`.
 The GitHub repository is named `MeiTowerdefence`.
 
 ## Current presentation
