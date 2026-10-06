@@ -102,11 +102,25 @@ class GameRenderer(context: Context) {
         strokeJoin = Paint.Join.ROUND
     }
     private val airFlowPaints = arrayOf(airFlowShadowPaint, airFlowPaint)
-    private val buildSitePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(115, 213, 185, 120) }
+    private val buildSiteShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(115, 28, 24, 18)
+    }
+    private val buildSitePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(225, 190, 168, 120)
+    }
+    private val buildSiteInnerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(205, 126, 105, 70)
+    }
     private val buildSiteEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(205, 65, 54, 34)
+        color = Color.argb(235, 65, 54, 34)
         style = Paint.Style.STROKE
-        strokeWidth = 2f
+    }
+    private val buildSiteHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(185, 238, 217, 168)
+        style = Paint.Style.STROKE
+    }
+    private val buildSiteBoltPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(235, 62, 54, 40)
     }
     private val backgroundPaint = Paint().apply { color = Color.rgb(24, 28, 20) }
     private val gridPaint = Paint().apply { color = Color.argb(35, 255, 255, 255); strokeWidth = 1f }
@@ -158,13 +172,32 @@ class GameRenderer(context: Context) {
     }
 
     private fun drawBuildSites(canvas: Canvas, session: GameSession, camera: GameCamera) {
-        val radius = camera.cellSizePx * 0.18f
+        val radius = camera.cellSizePx * 0.24f
+        val innerRadius = radius * 0.68f
+        val boltOffset = radius * 0.57f
+        val boltRadius = radius * 0.09f
+        val shadowOffset = camera.cellSizePx * 0.035f
+
+        buildSiteEdgePaint.strokeWidth = (camera.cellSizePx * 0.035f).coerceAtLeast(2f)
+        buildSiteHighlightPaint.strokeWidth = (camera.cellSizePx * 0.018f).coerceAtLeast(1f)
+
         for (row in 0 until session.level.gridHeight) {
             for (col in 0 until session.level.gridWidth) {
                 if (!GameSimulator.canBuildAt(session, GridPos(col, row))) continue
                 val (x, y) = camera.gridToScreen(Vec2(col + 0.5f, row + 0.5f))
+
+                // A compact stone foundation is easier to spot on every terrain than
+                // the old translucent circle, but is still only drawn while placing.
+                canvas.drawCircle(x, y + shadowOffset, radius * 1.08f, buildSiteShadowPaint)
                 canvas.drawCircle(x, y, radius, buildSitePaint)
+                canvas.drawCircle(x, y, innerRadius, buildSiteInnerPaint)
                 canvas.drawCircle(x, y, radius, buildSiteEdgePaint)
+                canvas.drawCircle(x, y, radius * 0.86f, buildSiteHighlightPaint)
+
+                canvas.drawCircle(x - boltOffset, y, boltRadius, buildSiteBoltPaint)
+                canvas.drawCircle(x + boltOffset, y, boltRadius, buildSiteBoltPaint)
+                canvas.drawCircle(x, y - boltOffset, boltRadius, buildSiteBoltPaint)
+                canvas.drawCircle(x, y + boltOffset, boltRadius, buildSiteBoltPaint)
             }
         }
     }
