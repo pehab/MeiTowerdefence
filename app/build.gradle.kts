@@ -14,8 +14,8 @@ android {
         applicationId = "de.haberland.meitowerdefense"
         minSdk = 28
         targetSdk = 37
-        versionCode = 8
-        versionName = "0.4.3"
+        versionCode = 9
+        versionName = "0.4.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -66,4 +66,20 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+// Optional existing APK signing identity restored by CI; never commit a keystore.
+android {
+    val githubStore = System.getenv("MEI_GITHUB_STORE_FILE")
+    if (!githubStore.isNullOrBlank()) {
+        signingConfigs {
+            create("githubUpdates") {
+                storeFile = file(githubStore)
+                storePassword = System.getenv("MEI_GITHUB_STORE_PASSWORD")
+                keyAlias = System.getenv("MEI_GITHUB_KEY_ALIAS")
+                keyPassword = System.getenv("MEI_GITHUB_KEY_PASSWORD")
+            }
+        }
+        buildTypes.getByName("debug").signingConfig = signingConfigs.getByName("githubUpdates")
+    }
 }

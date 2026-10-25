@@ -53,11 +53,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        de.meiapps.updates.GitHubUpdates.attach(this, "pehab/MeiTowerdefence") { }
         enterImmersiveMode()
 
-        appUpdateManager = AppUpdateManagerFactory.create(this)
-        appUpdateManager.registerListener(installStateUpdatedListener)
-        checkForFlexibleUpdate()
+        if (de.meiapps.updates.UpdateSource.isPlay(this)) {
+            appUpdateManager = AppUpdateManagerFactory.create(this)
+            appUpdateManager.registerListener(installStateUpdatedListener)
+            checkForFlexibleUpdate()
+        }
 
         setContent {
             MeiTowerDefenseTheme {
@@ -126,7 +129,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         metaViewModel.reload()
         enterImmersiveMode()
-        if (::appUpdateManager.isInitialized) {
+        if (::appUpdateManager.isInitialized && de.meiapps.updates.UpdateSource.isPlay(this)) {
             appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
                 if (info.installStatus() == InstallStatus.DOWNLOADED) {
                     updateReadyToInstall = true
@@ -151,6 +154,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkForFlexibleUpdate() {
+        if (!de.meiapps.updates.UpdateSource.isPlay(this)) return
         appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
             when {
                 info.installStatus() == InstallStatus.DOWNLOADED -> {

@@ -217,3 +217,7 @@ Changes to atlas order must be reflected in `render/GameRenderer.kt` and, where 
 ## Privacy
 
 See [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
+
+## Updatequelle
+
+Updates folgen der tatsächlichen Installationsquelle: Google Play für Play-Installationen, GitHub für direkt installierte APKs. [Bedienung, Signierung und Veröffentlichung](docs/UPDATES.md).
