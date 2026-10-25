@@ -99,6 +99,9 @@ fun InfoScreen(
                     Text("MeiTowerDefense", color = InfoIvory, fontFamily = FontFamily.Serif,
                         fontSize = 25.sp, fontWeight = FontWeight.Bold)
                     Text("Version $version", color = InfoGold, fontSize = 16.sp)
+                    TextButton(onClick = {
+                        de.meiapps.updates.GitHubUpdates.showSettings(context, "pehab/MeiTowerdefence")
+                    }) { Text("App-Updates", color = InfoGold) }
                     Text("Entwickelt von $developer", color = InfoIvory, fontSize = 17.sp)
                     SelectionContainer { Text(email, color = InfoGold, fontSize = 16.sp) }
                     Text("Fragen, Fehler oder Ideen? Schreib mir gern. Bei Fehlern hilft die Angabe der App-Version.",
